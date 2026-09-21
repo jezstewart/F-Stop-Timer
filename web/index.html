@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>F-stop timer</title>
+<style>
+/* ---------- the 1280x800 tablet screen (16:10): red on black ---------- */
+#screen{position:absolute;left:0;top:0;width:1280px;height:750px;background:#000;color:var(--r5);font-family:'Roboto Condensed','sans-serif-condensed','Arial Narrow','Liberation Sans Narrow','DejaVu Sans Condensed',sans-serif;font-weight:500;overflow:hidden;transform-origin:0 0;transition:filter .35s;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#screen *{box-sizing:border-box}
+:where(#screen) button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#screen button:disabled{opacity:.3;cursor:not-allowed}
+#screen button:focus-visible,#screen input:focus-visible,#screen select:focus-visible{outline:2px dashed var(--r5);outline-offset:4px}
+:where(#screen) small{font-size:.42em;font-weight:500;margin-left:8px;color:var(--r4)}
+.num{font-weight:700;font-variant-numeric:tabular-nums;line-height:.92;text-shadow:0 0 20px rgba(255,0,0,.38)}
+.lbl{color:var(--r4);font-size:26px;margin:0 0 6px;line-height:1.1}
+.muted{color:var(--r4)}
+#segbar{position:absolute;left:0;right:0;top:0;height:18px;display:flex;gap:4px;padding:4px 4px 0}
+.seg{flex:1;background:var(--r1);border-radius:2px;overflow:hidden;position:relative}
+.seg i{display:block;height:100%;width:0;background:var(--r5)}
+.seg.next{outline:1px solid var(--r5);outline-offset:-1px}
+#status{position:absolute;left:0;right:0;top:18px;height:52px;display:flex;align-items:center;gap:20px;padding:0 18px;font-size:26px;border-bottom:1px solid var(--r2)}
+.schip{min-width:155px;padding:4px 15px 2px;border:2px solid var(--r4);border-radius:8px;text-align:center;font-weight:700;font-size:29px}
+.schip.exp{background:var(--r5);color:#000;border-color:var(--r5)}
+.schip.warn{border-style:dashed}
+#toast{flex:1;color:var(--r4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast.hot{color:var(--r5)}
+.ind{display:flex;align-items:center;gap:8px;color:var(--r3)}
+.ind i{width:15px;height:15px;border-radius:50%;border:2px solid var(--r3)}
+.ind.on{color:var(--r5)}
+.ind.on i{background:var(--r5);border-color:var(--r5);box-shadow:0 0 10px var(--r5)}
+#main{position:absolute;left:0;right:0;top:70px;height:600px;padding:18px 25px}
+#nav{position:absolute;left:0;right:0;top:670px;height:80px;display:flex;border-top:1px solid var(--r2)}
+#nav button{flex:1;font-size:32px;font-weight:600;color:var(--r4);border-right:1px solid var(--r1)}
+#nav button:last-child{border-right:0}
+#nav button.on{background:var(--r5);color:#000}
+#nav.locked button{opacity:.3;pointer-events:none}
+.banner{position:absolute;left:0;right:0;top:0;z-index:5;height:42px;background:var(--r5);color:#000;font-size:28px;font-weight:600;padding:6px 25px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.banner+div{margin-top:45px;height:calc(100% - 45px)}
+
+.btn,.chip,.sq,.big,.tog,.go,.strip,.basev{border:2px solid var(--r4);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.btn.on{background:var(--r5)!important;color:#000!important;border-color:var(--r5)!important}
+.btn.on small{color:#000!important}
+.sq{width:95px;height:95px;font-size:68px;font-weight:600;flex:none}
+.sq.s{width:62px;height:58px;font-size:42px;border-radius:10px}
+.chip{flex:1;height:65px;font-size:35px;font-weight:600;border-radius:10px;padding:0 8px}
+.row{display:flex;gap:12px;margin-bottom:15px}
+.big{flex:1;height:120px;flex-direction:column;font-size:82px;font-weight:600;border-radius:15px;line-height:.9}
+.big small{font-size:28px;margin:0;color:var(--r4)}
+.go{white-space:nowrap;height:115px;background:var(--r5);color:#000;border-color:var(--r5);font-size:70px;font-weight:700;border-radius:15px;width:100%}
+.tog{flex:1;height:65px;font-size:31px;font-weight:600;border-radius:10px}
+
+/* time view */
+.time{display:grid;grid-template-columns:690px 1fr;gap:38px;height:100%}
+.baserow{display:flex;align-items:center;gap:15px;margin-bottom:15px}
+.basev{flex:1;height:95px;border-color:var(--r2);align-items:baseline;padding-top:8px}
+.basev .num{font-size:92px}
+.basev small{font-size:38px}
+.tr{display:flex;flex-direction:column;gap:12px;min-width:0}
+.readout{display:grid;grid-template-columns:1fr 1fr;gap:10px;border:2px solid var(--r3);border-radius:15px;padding:12px 18px 10px;height:185px}
+.readout .num{font-size:95px;white-space:nowrap}
+.readout.sm{height:auto;padding:10px 15px;margin-bottom:12px}
+.readout.sm .num{font-size:65px}
+.note{color:var(--r4);font-size:25px;margin-top:-4px}
+.bright{display:flex;align-items:center;gap:15px;height:45px}
+.bright input{flex:1}
+#screen input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:38px;margin:0}
+#screen input[type=range]::-webkit-slider-runnable-track{height:10px;background:var(--r2);border-radius:5px}
+#screen input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:35px;height:35px;margin-top:-10px;border-radius:50%;background:var(--r5);border:2px solid #000}
+#screen input[type=range]::-moz-range-track{height:10px;background:var(--r2);border-radius:5px}
+#screen input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--r5);border:2px solid #000}
+#screen input[type=range]:disabled{opacity:.35}
+.bright #focusrem{min-width:138px;text-align:right}
+
+/* strip view */
+.stripwrap{display:grid;grid-template-columns:775px 1fr;gap:32px;height:100%}
+.strips{display:flex;gap:10px;margin-bottom:15px}
+.strip{flex:1;height:172px;flex-direction:column;justify-content:space-between;padding:10px 5px;border-radius:10px}
+.strip .sn{font-size:30px;color:var(--r4)}
+.strip .sv{font-size:38px;white-space:nowrap}
+.strip .st{font-size:29px;color:var(--r5)}
+.strip.sel{border-width:5px;border-color:var(--r5)}
+.tbl{display:grid;grid-template-columns:88px 1fr 1fr 1fr;font-size:29px}
+.tbl>div{padding:4px 10px;border-bottom:1px solid var(--r1);line-height:1.15}
+.tbl .h{color:var(--r4)}
+.rcol{display:flex;flex-direction:column;gap:12px;min-width:0}
+.rcol>.btn,.rcol>.row,.rcol>.mini,.rcol>.saved{flex:none}
+.rcol .chip{min-width:0;padding:0}
+.go.sm{font-size:52px}
+.mini{display:flex;align-items:center;gap:12px}
+.mini .basev{height:80px}
+.mini .basev .num{font-size:62px}
+.mini .basev small{font-size:30px}
+.stp{display:flex;align-items:center;gap:10px}
+.stp .sv{min-width:102px;text-align:center;font-size:38px;font-weight:600}
+
+/* recipe view */
+.recwrap{display:grid;grid-template-columns:762px 1fr;gap:32px;height:100%}
+.list{height:360px;overflow-y:auto;padding-right:8px;margin-bottom:10px}
+.entry{display:flex;align-items:center;gap:15px;height:70px;border:2px solid var(--r2);border-radius:10px;padding:0 10px;margin-bottom:10px}
+.badge{width:98px;text-align:center;border:2px solid var(--r4);border-radius:8px;font-size:28px;font-weight:600;padding:2px 0}
+.badge.dodge{border-style:dashed}
+.es{font-size:48px;width:130px}
+.et{flex:1;font-size:32px}
+.empty{color:var(--r4);font-size:32px;line-height:1.25;padding:25px 5px;max-width:650px}
+.saved{display:flex;flex-wrap:wrap;gap:10px}
+.saved .chip{flex:none;height:55px;font-size:29px;padding:0 15px}
+.saved .x{width:55px;flex:none}
+
+/* log, scale, settings */
+.logv{height:100%}
+.lhead,.lrow{display:grid;grid-template-columns:120px 135px 1fr 312px;gap:12px;align-items:center;padding:5px 8px;font-size:29px}
+.lhead{color:var(--r4);border-bottom:1px solid var(--r2)}
+.lrow{border-bottom:1px solid var(--r1);min-height:62px}
+.lrow input,.scv input,.scv select{background:#000;color:var(--r5);border:2px solid var(--r3);border-radius:8px;font:inherit;font-size:30px;padding:5px 10px;width:100%;min-width:0}
+.lrow input::placeholder{color:var(--r3)}
+.loglist{height:415px;overflow-y:auto}
+.scv{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.szrow{display:grid;grid-template-columns:188px 1fr 32px 1fr;gap:12px;align-items:center;margin-bottom:18px}
+.szrow .cap{font-size:32px;grid-row:span 2}
+.scv select{grid-column:2 / 5;margin-bottom:0}
+.scres{border:2px solid var(--r3);border-radius:15px;padding:20px 22px}
+.scres .num{font-size:88px}
+.setv{display:grid;grid-template-columns:1fr 1fr;gap:8px 45px}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:15px;min-height:75px;border-bottom:1px solid var(--r1);font-size:31px;line-height:1.1}
+.srow small{display:block;margin:2px 0 0;font-size:24px;color:var(--r4)}
+.srow .tog{flex:none;width:130px;height:55px}
+
+/* run view */
+.run{display:grid;grid-template-columns:1fr 425px;grid-template-rows:minmax(0,1fr);gap:28px;height:100%}
+.rl{display:flex;flex-direction:column;min-width:0;min-height:0}
+.rtitle{font-size:38px;color:var(--r4)}
+.cdbox{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.cd{font-size:268px;line-height:.86;letter-spacing:-2px}
+.cd.stale{opacity:.45}
+.cdcap{font-size:32px;color:var(--r4);margin-top:5px}
+.pr1{font-size:38px;font-weight:600}
+.pr2{font-size:55px;font-weight:700;line-height:1.05;min-height:58px}
+.runbtns{display:flex;gap:18px;margin-top:15px}
+.runbtns .go{height:95px;font-size:58px;flex:1}
+.runbtns .tog2{flex:1;height:95px;font-size:55px;font-weight:700;border:2px solid var(--r4);border-radius:15px}
+.rr{min-width:0}
+.mstrips{display:flex;gap:8px;margin-bottom:12px}
+.mstrip{flex:1;height:118px;border:2px solid var(--r4);border-radius:8px;display:flex;align-items:flex-start;justify-content:center;font-size:32px;padding-top:5px}
+.mstrip.cov{background:transparent;border-style:dashed;border-color:var(--r2);color:var(--r3)}
+.mstrip.lit{background:rgba(255,0,0,.32)}
+.steps{margin-bottom:10px}
+.stpl{display:flex;justify-content:space-between;font-size:30px;padding:4px 10px;border-bottom:1px solid var(--r1)}
+.stpl.done{color:var(--r3);text-decoration:line-through}
+.stpl.cur{background:var(--r5);color:#000}
+.cues{border:2px solid var(--r3);border-radius:10px;padding:8px 12px;margin-top:8px}
+.cue{display:flex;justify-content:space-between;font-size:30px;padding:2px 0}
+.cue.hold{color:#000;background:var(--r5);margin:0 -6px;padding:2px 8px;border-radius:5px}
+
+/* overlay keypad */
+#overlay{position:absolute;inset:0;z-index:20}
+#overlay:empty{display:none}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center}
+.kp{width:475px;border:2px solid var(--r4);border-radius:18px;background:#000;padding:20px}
+.kpd{border:2px solid var(--r3);border-radius:10px;text-align:right;padding:8px 18px;margin-bottom:15px;font-size:80px;height:105px}
+.kpg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kpg button{height:80px;font-size:48px;font-weight:600;border:2px solid var(--r4);border-radius:10px}
+.kpg .ok{background:var(--r5);color:#000}
+
+
+/* ---- tablet layout: 16:10 canvas, flex column app ---- */
+#screen{width:1280px;height:800px}
+#app{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:column;transition:filter .35s}
+#segbar{position:relative;left:auto;right:auto;top:auto;flex:none;height:18px;padding:4px 4px 0}
+#status{position:relative;left:auto;right:auto;top:auto;flex:none;height:54px;padding:0 20px;font-size:26px}
+#main{position:relative;left:auto;right:auto;top:auto;flex:1;min-height:0;height:auto;padding:20px 32px}
+#nav{position:relative;left:auto;right:auto;top:auto;flex:none;height:80px}
+.banner{height:44px;padding:6px 32px;padding-right:250px;font-size:27px;line-height:1.25}
+.banner+div{margin-top:46px;height:calc(100% - 46px)}
+.bbtn{position:absolute;right:16px;top:5px;height:34px;padding:0 24px;border:3px solid #000;border-radius:8px;font-size:26px;font-weight:700;color:#000;background:transparent;line-height:1}
+#overlay{z-index:50}
+.time .lbl{font-size:26px;margin-bottom:6px}
+.time .baserow{gap:16px;margin-bottom:14px}
+.time .sq{width:96px;height:96px;font-size:70px}
+.time .basev{height:96px}
+.time .basev .num{font-size:96px}
+.time .row{margin-bottom:14px}
+.time .chip{height:68px;font-size:36px}
+.time .tr .chip{height:62px;font-size:29px}
+.time .big{height:130px;font-size:84px}
+.time .big small{font-size:28px}
+.time .tr{gap:12px}
+.time .readout{height:190px}
+.time .readout .num{font-size:100px}
+.time .go{height:112px;font-size:70px}
+.time .tog{height:64px;font-size:30px}
+.time .bright{height:48px}
+.tbl>div{padding:6px 12px}
+.strips .strip{height:190px}
+.stripwrap .go{height:120px}
+.stripwrap .chip{height:70px}
+.list{height:390px}
+.loglist{height:420px}
+.srow{min-height:82px;font-size:31px}
+.srow small{font-size:23px}
+.setv{gap:10px 52px}
+.scv .cap{font-size:32px}
+.scv input,.scv select{font-size:30px;padding:8px 12px}
+.szrow{margin-bottom:24px}
+.scres{padding:26px 32px}
+.scres .num{font-size:100px}
+
+
+/* ---- web app frame and relay panel ---- */
+:root{--r0:#000000;--r1:#260000;--r2:#4d0000;--r3:#880000;--r4:#d60000;--r5:#ff1414}
+html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+.relbtn{display:flex;align-items:center;gap:6px;color:var(--r3);font-size:26px;padding:6px 8px}
+.relbtn i{width:12px;height:12px;border-radius:50%;border:2px solid var(--r3)}
+.relbtn.on{color:var(--r5)}
+.relbtn.on i{background:var(--r5);border-color:var(--r5);box-shadow:0 0 8px var(--r5)}
+.rpanel{width:940px;max-height:720px;border:3px solid var(--r4);border-radius:16px;background:#000;padding:22px 28px;display:flex;flex-direction:column;gap:12px}
+.rpanel h3{margin:0;font-size:40px;font-weight:700}
+.kvs{display:grid;grid-template-columns:260px 1fr;gap:2px 16px;font-size:26px;line-height:1.25}
+.kvs .k{color:var(--r4)}
+.rlog{height:230px;overflow-y:auto;border:2px solid var(--r2);border-radius:8px;padding:8px 12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:18px;line-height:1.35;color:var(--r4)}
+.rlog div{display:grid;grid-template-columns:64px 130px 1fr;gap:8px;border-bottom:1px solid var(--r1)}
+.rbtns{display:flex;gap:12px}
+.rbtns .chip{flex:1;height:68px;font-size:24px;padding:0 6px}
+
+</style>
+</head>
+<body>
+<div id="screen">
+  <div id="app">
+    <div id="segbar"></div>
+    <div id="status"></div>
+    <div id="main"></div>
+    <div id="nav"></div>
+  </div>
+  <div id="overlay"></div>
+</div>
+<script>
+(() => {
+'use strict';
+/* ================= utilities ================= */
+const perf = () => performance.now();
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function fmtStops(n) {              // n = twelfths of a stop
+  if (n === 0) return '0';
+  const a = Math.abs(n), w = Math.floor(a / 12), r = a % 12;
+  let f = '';
+  if (r) { const g = gcd(r, 12); f = (r / g) + '/' + (12 / g); }
+  return (n > 0 ? '+' : '\u2212') + (w ? w : '') + (w && f ? ' ' : '') + f;
+}
+
+
+/* ================= constants ================= */
+const IV = [{ n: 6, l: '1/2' }, { n: 4, l: '1/3' }, { n: 3, l: '1/4' }, { n: 2, l: '1/6' }, { n: 1, l: '1/12' }];
+const PRESETS = [5, 10, 15, 20, 25];
+const NAMES = { IDLE: 'Idle', ARMED: 'Armed', FOCUS: 'Focus', EXPOSING: 'Exposing', GAP: 'Next step', PAUSED: 'Paused', FAULT: 'Fault' };
+const RUNNING = ['EXPOSING', 'GAP', 'PAUSED'];
+const running = s => RUNNING.includes(s);
+const TABS = [['time', 'Time'], ['strip', 'Strip test'], ['recipe', 'Recipe'], ['log', 'Log'], ['scale', 'Scale'], ['set', 'Settings']];
+const SETDEF = {
+  gap: { min: 1, max: 30, step: 1, fmt: v => v + ' s' },
+  lat: { min: 0, max: 500, step: 5, fmt: v => v + ' ms' },
+  focusMin: { opts: [0, 1, 2, 5, 10, 15], fmt: v => (v ? v + ' min' : 'Off') },
+  vol: { min: 0, max: 100, step: 10, fmt: v => v + '%' },
+  dim: { min: 5, max: 50, step: 5, fmt: v => v + '%' },
+  recipThr: { min: 5, max: 120, step: 5, fmt: v => v + ' s' },
+  recipK: { min: 1, max: 1.3, step: 0.02, fmt: v => v.toFixed(2) }
+};
+
+
+/* ================= saved state (the app remembers its settings on this tablet) ================= */
+const KEY = 'fstop-app-v1';
+const defaults = () => ({
+  baseT: 100, iv: 1, off: 0, tab: 'time', rid: 0,
+  set: { gap: 5, lat: 0, focusMin: 5, vol: 60, mute: false, dim: 30, bright: 100, safeAuto: false, recipOn: false, recipThr: 20, recipK: 1.1 },
+  recipe: [], saved: [], log: [],
+  scale: { aw: 8, ah: 10, bw: 11, bh: 14 }
+});
+let A = defaults();
+try {
+  const j = JSON.parse(localStorage.getItem(KEY) || 'null');
+  if (j) A = Object.assign(defaults(), j, { set: Object.assign(defaults().set, j.set || {}), scale: Object.assign(defaults().scale, j.scale || {}) });
+} catch (e) { /* storage unavailable: run without it */ }
+if (!TABS.some(t => t[0] === A.tab)) A.tab = 'time';
+function save() { try { localStorage.setItem(KEY, JSON.stringify(A)); } catch (e) { /* ignore */ } }
+
+/* ================= app state ================= */
+const U = { keypad: null, toast: null, plan: null, runPlan: null, armedSig: '', linkOk: false, rxAt: 0, selStrip: null, segN: 0, everConnected: false, panel: false };
+let R = { state: 'IDLE', idx: 0, steps: 0, rem: 0, total: 0, lamp: false, safe: true, safeUser: true, focusRem: null, kind: null, speed: 1, fault: '', pf: null, rxAt: 0 };
+let wakeLock = null;
+
+/* ================= connection log (shown in the relay panel) ================= */
+const MLOG = [];
+const T0 = perf();
+function mlog(dir, text) {
+  MLOG.unshift({ t: (perf() - T0) / 1000, dir, text });
+  if (MLOG.length > 60) MLOG.pop();
+  if (U.panel) renderOverlay();
+}
+function describe(m) {
+  switch (m.type) {
+    case 'ARM': return 'ARM ' + m.plan.kind + ', ' + m.plan.steps.length + ' step(s), gap ' + (m.plan.gapMs / 1000).toFixed(1) + ' s';
+    case 'CONFIG': return 'CONFIG offset ' + m.lat + ' ms, focus timeout ' + (m.focusMs ? m.focusMs / 60000 + ' min' : 'off') + ', volume ' + (m.mute ? 'muted' : m.vol + '%');
+    case 'FOCUS': return 'FOCUS ' + (m.on ? 'on' : 'off');
+    case 'SAFELIGHT': return 'SAFELIGHT ' + (m.on ? 'on' : 'off');
+    default: return m.type;
+  }
+}
+
+/* ================= relay protocol (see docs/PROTOCOL.md) ================= */
+const UUID = { svc: '6f9c0001-3a5b-4c7d-9e21-8b4f1d2a7c10', cmd: '6f9c0002-3a5b-4c7d-9e21-8b4f1d2a7c10', evt: '6f9c0003-3a5b-4c7d-9e21-8b4f1d2a7c10', info: '6f9c0004-3a5b-4c7d-9e21-8b4f1d2a7c10' };
+const PROTOCOL = 1;
+const STATE_NAMES = ['IDLE', 'ARMED', 'FOCUS', 'EXPOSING', 'GAP', 'PAUSED', 'FAULT'];
+const KIND_NAMES = ['single', 'strip', 'recipe'];
+const FAULT_TEXT = { 1: 'Link lost in focus mode: enlarger switched off', 2: 'Lamp was on for an hour: switched off' };
+const ARM_ERR_TEXT = { 1: 'busy', 2: 'bad frame', 3: 'incomplete', 4: 'step too long', 5: 'too many steps', 6: 'no plan in progress' };
+const u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+const rd32 = (b, i) => (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)) >>> 0;
+
+function encode(type, p) {                     // returns a list of frames (each at most 20 bytes)
+  switch (type) {
+    case 'PING': return [[0x01]];
+    case 'ARM': {
+      const pl = p.plan, id = (++Ble.planSeq) & 255, n = pl.steps.length;
+      const frames = [[0x10, id, KIND_NAMES.indexOf(pl.kind), n, ...u32(pl.gapMs)]];
+      for (let i = 0; i < n; i += 4) {
+        const c = Math.min(4, n - i), f = [0x11, id, i, c];
+        for (let k = 0; k < c; k++) f.push(...u32(pl.steps[i + k].ms));
+        frames.push(f);
+      }
+      frames.push([0x12, id]);
+      return frames;
+    }
+    case 'START': return [[0x20]];
+    case 'PAUSE': return [[0x21]];
+    case 'RESUME': return [[0x22]];
+    case 'CANCEL': return [[0x23]];
+    case 'FOCUS': return [[0x30, p.on ? 1 : 0]];
+    case 'SAFELIGHT': return [[0x31, p.on ? 1 : 0]];
+    case 'CONFIG': {
+      const lat = p.lat & 0xFFFF, sec = Math.round(p.focusMs / 1000) & 0xFFFF;
+      return [[0x40, lat & 255, lat >> 8, sec & 255, sec >> 8, p.vol & 255, (p.mute ? 1 : 0) | (p.safeAuto ? 2 : 0)]];
+    }
+  }
+  return [];
+}
+function decode(b) {
+  if (!b.length) return null;
+  if (b[0] === 0x81 && b.length >= 18) {
+    const f = b[2], fr = b[13] | (b[14] << 8);
+    return { type: 'STATUS', state: STATE_NAMES[b[1]] || 'IDLE', lamp: !!(f & 1), safe: !!(f & 2), safeUser: !!(f & 4), idx: b[3], steps: b[4],
+      rem: rd32(b, 5), total: rd32(b, 9), focusRem: fr === 0xFFFF ? null : fr * 1000, kind: KIND_NAMES[b[15]] || null,
+      pf: b[16] === 0xFF ? null : (STATE_NAMES[b[16]] || null), fault: FAULT_TEXT[b[17]] || '', speed: 1 };
+  }
+  if (b[0] === 0x82 && b.length >= 2) {
+    switch (b[1]) {
+      case 1: return { type: 'EVENT', ev: 'done', total: rd32(b, 2) };
+      case 2: return { type: 'EVENT', ev: 'cancelled' };
+      case 3: return { type: 'EVENT', ev: 'pedal', long: !!b[2] };
+      case 4: return { type: 'EVENT', ev: 'focus_timeout' };
+      case 5: return { type: 'EVENT', ev: 'fault', text: FAULT_TEXT[b[2]] || 'Relay fault' };
+      case 6: return { type: 'EVENT', ev: 'step_done', idx: b[2] };
+      case 7: return { type: 'EVENT', ev: 'arm_ok', id: b[2] };
+      case 8: return { type: 'EVENT', ev: 'arm_err', id: b[2], code: b[3] };
+    }
+  }
+  return null;
+}
+function toRelay(type, p) {
+  p = p || {};
+  if (type !== 'PING') mlog('App\u2192Relay', describe(Object.assign({ type }, p)));
+  Ble.send(type, p);
+}
+
+/* ================= Bluetooth (Web Bluetooth) ================= */
+const Ble = {
+  supported: typeof navigator !== 'undefined' && !!navigator.bluetooth,
+  dev: null, chars: null, connected: false, connecting: false, want: false,
+  planSeq: 0, info: null, retry: 0, timer: 0, inflight: 0, chain: Promise.resolve(), lastError: '',
+  noteError(e) { this.lastError = (e && e.name === 'NotFoundError') ? 'no relay was chosen' : ((e && e.message) || String(e)); },
+  // Must run from a tap: the browser shows its own pairing list.
+  async choose() {
+    if (!this.supported) return;
+    try {
+      const d = await navigator.bluetooth.requestDevice({ filters: [{ services: [UUID.svc] }, { namePrefix: 'FStop' }], optionalServices: [UUID.svc] });
+      this.attach(d); this.want = true; this.retry = 0;
+      if (this.connected) { try { this.dev.gatt.disconnect(); } catch (e) { /* ignore */ } }
+      await this.connect();
+    } catch (e) { mlog('BLE', 'pairing: ' + ((e && e.message) || e)); this.noteError(e); renderAll(); }
+  },
+  attach(d) {
+    if (this.dev === d) return;
+    if (this.dev) this.dev.removeEventListener('gattserverdisconnected', this.onDisc);
+    this.dev = d; d.addEventListener('gattserverdisconnected', this.onDisc);
+  },
+  onDisc() {
+    Ble.connected = false; Ble.chars = null; mlog('BLE', 'disconnected');
+    renderAll();
+    if (Ble.want) Ble.scheduleRetry();
+  },
+  scheduleRetry() {
+    clearTimeout(this.timer);
+    const d = Math.min(3000, 400 + this.retry * 600); this.retry++;
+    this.timer = setTimeout(() => { this.connect(); }, d);
+  },
+  async connect() {
+    if (!this.dev || this.connecting || this.connected) return;
+    this.connecting = true; renderAll();
+    try {
+      mlog('BLE', 'connecting to ' + (this.dev.name || 'relay'));
+      const server = await this.dev.gatt.connect();
+      const svc = await server.getPrimaryService(UUID.svc);
+      const cmd = await svc.getCharacteristic(UUID.cmd);
+      const evt = await svc.getCharacteristic(UUID.evt);
+      this.info = null;
+      try { const inf = await (await svc.getCharacteristic(UUID.info)).readValue(); this.info = [inf.getUint8(0), inf.getUint8(1), inf.getUint8(2)]; } catch (e) { /* optional */ }
+      if (this.chars && this.chars.evt) this.chars.evt.removeEventListener('characteristicvaluechanged', this.onNotify);
+      evt.addEventListener('characteristicvaluechanged', this.onNotify);
+      await evt.startNotifications();
+      this.chars = { cmd, evt }; this.connected = true; this.retry = 0; this.lastError = '';
+      mlog('BLE', 'connected' + (this.info ? ', protocol ' + this.info[0] + ', firmware ' + this.info[1] + '.' + this.info[2] : ''));
+      if (this.info && this.info[0] !== PROTOCOL) toast('Relay speaks protocol ' + this.info[0] + '; this app needs ' + PROTOCOL + '.', 9000, true);
+    } catch (e) {
+      mlog('BLE', 'connect failed: ' + ((e && e.message) || e)); this.noteError(e);
+      try { this.dev.gatt.disconnect(); } catch (_) { /* ignore */ }
+      if (this.want) this.scheduleRetry();
+    } finally { this.connecting = false; renderAll(); }
+  },
+  onNotify(ev) {
+    const dv = ev.target.value, b = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength), m = decode(b);
+    if (m) onRelayMsg(m);
+  },
+  disconnect() {
+    this.want = false; clearTimeout(this.timer);
+    try { if (this.dev && this.dev.gatt.connected) this.dev.gatt.disconnect(); } catch (e) { /* ignore */ }
+    this.connected = false; this.chars = null; renderAll();
+  },
+  // Writes go out one at a time, in order (a Bluetooth link allows one operation at a time).
+  send(type, p) {
+    if (!this.connected || !this.chars) return false;
+    if (type === 'PING' && this.inflight > 2) return true;
+    const frames = encode(type, p), ch = this.chars.cmd;
+    this.inflight++;
+    this.chain = this.chain.then(async () => {
+      for (const f of frames) {
+        const buf = new Uint8Array(f);
+        if (ch.writeValueWithResponse) await ch.writeValueWithResponse(buf); else await ch.writeValue(buf);
+      }
+    }).catch(e => { if (type !== 'PING') mlog('BLE', 'write failed: ' + ((e && e.message) || e)); }).finally(() => { this.inflight--; });
+    return true;
+  }
+};
+
+/* ================= keep the screen on, full screen ================= */
+async function wake() {
+  try {
+    if ('wakeLock' in navigator && document.visibilityState === 'visible' && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { wakeLock = null; }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); });
+document.addEventListener('pointerdown', wake);
+async function goFullscreen() {
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+    if (screen_orientation() && screen_orientation().lock) await screen_orientation().lock('landscape');
+  } catch (e) { mlog('App', 'full screen: ' + ((e && e.message) || e)); }
+  if (U.panel) renderOverlay();
+}
+function screen_orientation() { return (window.screen && window.screen.orientation) || null; }
+
+
+/* ================= exposure maths ================= */
+const nomTime = (base, n) => base * Math.pow(2, n / 12);
+function Rcp(t) {                                   // reciprocity compensation (placeholder power law)
+  if (!A.set.recipOn) return t;
+  const T = A.set.recipThr;
+  return t <= T ? t : T * Math.pow(t / T, A.set.recipK);
+}
+const actTime = (base, n) => Rcp(nomTime(base, n));
+const mainNom = () => nomTime(A.baseT / 10, A.off);
+const mainAct = () => Rcp(mainNom());
+const ivN = () => IV[A.iv].n;
+
+function buildPlan(kind) {
+  const b = A.baseT / 10, n = ivN(), ms = x => Math.max(0, Math.round(x * 1000)), gapMs = A.set.gap * 1000;
+  if (kind === 'strip') {
+    const steps = []; let prev = 0;
+    for (let k = 0; k < 6; k++) {
+      const tot = actTime(b, k * n);
+      steps.push({ ms: ms(tot - prev), label: k ? 'Cover strip ' + (7 - k) : 'Expose the whole sheet', k, reach: tot, stops: k * n });
+      prev = tot;
+    }
+    return { kind, steps, gapMs, meta: 'Strip test, base ' + b.toFixed(1) + ' s, ' + IV[A.iv].l + ' stop steps' };
+  }
+  const m = nomTime(b, A.off), main = Rcp(m);
+  if (kind === 'recipe') {
+    const steps = [{ ms: ms(main), label: 'Main exposure', stops: A.off, cues: [] }];
+    let bi = 0, di = 0;
+    A.recipe.forEach(e => {
+      if (e.type === 'burn') { bi++; steps.push({ ms: ms(Rcp(m * Math.pow(2, e.n / 12)) - main), label: 'Burn ' + bi + ' (' + fmtStops(e.n) + ')', stops: A.off + e.n }); }
+      else { di++; steps[0].cues.push({ label: 'Dodge ' + di + ' (' + fmtStops(-e.n) + ')', holdMs: ms(main - Rcp(m * Math.pow(2, -e.n / 12))) }); }
+    });
+    const bits = A.recipe.map(e => (e.type === 'burn' ? 'burn ' + fmtStops(e.n) : 'dodge ' + fmtStops(-e.n)));
+    return { kind, steps, gapMs, meta: 'Recipe, main ' + main.toFixed(1) + ' s' + (bits.length ? ', ' + bits.join(', ') : '') };
+  }
+  return { kind: 'single', steps: [{ ms: ms(main), label: 'Exposure', stops: A.off }], gapMs: 0, meta: 'Base ' + b.toFixed(1) + ' s, ' + fmtStops(A.off) + ' stop, ' + main.toFixed(1) + ' s' };
+}
+
+
+/* ================= screen-side logic ================= */
+function armKind() {
+  if (A.tab === 'strip') return 'strip';
+  if (A.tab === 'recipe') return 'recipe';
+  if (A.tab === 'time') return 'single';
+  return U.plan ? U.plan.kind : 'single';
+}
+function syncArm(force) {
+  if (!U.linkOk || running(R.state)) return;
+  const plan = buildPlan(armKind());
+  const sig = JSON.stringify(plan);
+  if (!force && sig === U.armedSig) return;
+  U.armedSig = sig; U.plan = plan;
+  toRelay('ARM', { plan });
+}
+function pushConfig() {
+  const s = A.set;
+  toRelay('CONFIG', { lat: s.lat, focusMs: s.focusMin * 60000, vol: s.vol, mute: s.mute, safeAuto: s.safeAuto });
+}
+function onReconnect() {
+  mlog('UI', 'relay link up: sending settings and the armed plan');
+  pushConfig(); U.armedSig = ''; syncArm(true);
+}
+function onRelayMsg(m) { if (m.type === 'STATUS') onStatus(m); else if (m.type === 'EVENT') onEvent(m); }
+function onStatus(m) {
+  const prev = R;
+  R = Object.assign({}, m, { rxAt: perf() }); U.rxAt = R.rxAt;
+  let changed = false;
+  if (!U.linkOk) { U.linkOk = true; U.everConnected = true; changed = true; onReconnect(); }
+  if (running(R.state) && !running(prev.state)) {
+    U.runPlan = U.plan ? JSON.parse(JSON.stringify(U.plan)) : null;
+    if (U.runPlan && U.runPlan.steps.length !== R.steps) U.runPlan = null;
+  }
+  ['state', 'idx', 'lamp', 'safe', 'safeUser', 'steps', 'fault', 'kind', 'pf'].forEach(k => { if (prev[k] !== R[k]) changed = true; });
+  if (changed) renderAll();
+}
+function onEvent(m) {
+  switch (m.ev) {
+    case 'done': addLog(m.total); toast('Exposure complete. Saved to the log.'); break;
+    case 'cancelled': toast('Cancelled'); break;
+    case 'pedal': toast('Foot pedal ' + (m.long ? 'long press' : 'press')); break;
+    case 'focus_timeout': toast('Focus light switched off (timeout)'); break;
+    case 'fault': toast(m.text, 8000, true); break;
+    case 'arm_err': if (m.code !== 1) toast('The relay refused the plan: ' + (ARM_ERR_TEXT[m.code] || m.code), 6000, true); break;
+  }
+}
+function addLog(totalMs) {
+  const p = U.runPlan || U.plan; if (!p) return;
+  A.log.unshift({ id: Date.now() + Math.floor(Math.random() * 1000), ts: Date.now(), kind: p.kind, meta: p.meta, total: totalMs, note: '' });
+  if (A.log.length > 60) A.log.pop();
+  save(); if (A.tab === 'log') renderMainView();
+}
+function toast(text, ms, hot) { U.toast = { text, until: perf() + (ms || 3200), hot: !!hot }; updateToast(); }
+function updateToast() {
+  const el = $('#toast'); if (!el) return;
+  const t = U.toast && perf() < U.toast.until ? U.toast : null;
+  el.textContent = t ? t.text : 'Step size ' + IV[A.iv].l + ' stop, base ' + (A.baseT / 10).toFixed(1) + ' s';
+  el.classList.toggle('hot', !!(t && t.hot));
+}
+function remEst() {
+  if (!running(R.state)) return 0;
+  let r = R.rem;
+  if (U.linkOk && (R.state === 'EXPOSING' || R.state === 'GAP')) r -= (perf() - R.rxAt) * R.speed;
+  return Math.max(0, r);
+}
+
+
+/* ================= main screen rendering ================= */
+const screen = $('#screen');
+const B = (act, label, cls, extra) => '<button class="btn ' + (cls || '') + '" data-act="' + act + '" ' + (extra || '') + '>' + label + '</button>';
+const chips = (arr, sel, act, fmt) => arr.map((x, i) => B(act, fmt(x, i), 'chip' + (sel(x, i) ? ' on' : ''), 'data-a="' + i + '"')).join('');
+const ivChips = () => IV.map((x, i) => B('iv', x.l, 'chip' + (i === A.iv ? ' on' : ''), 'data-a="' + i + '"')).join('');
+const disAttr = () => (U.linkOk ? '' : 'disabled');
+
+function renderSeg() {
+  const n = running(R.state) ? Math.max(R.steps, 1) : A.tab === 'strip' ? 6 : A.tab === 'recipe' ? 1 + A.recipe.filter(e => e.type === 'burn').length : 1;
+  if (n !== U.segN || !$('#segbar').children.length) {
+    U.segN = n;
+    $('#segbar').innerHTML = Array.from({ length: n }, () => '<div class="seg"><i></i></div>').join('');
+  }
+}
+function renderStatus() {
+  const s = U.linkOk ? R.state : 'NOLINK';
+  const label = s === 'NOLINK' ? 'No link' : NAMES[s];
+  const cls = (s === 'EXPOSING' ? ' exp' : '') + (s === 'FAULT' || s === 'NOLINK' ? ' warn' : '');
+  const ind = (t, on) => '<span class="ind' + (on ? ' on' : '') + '"><i></i>' + t + '</span>';
+  $('#status').innerHTML = '<span class="schip' + cls + '">' + label + '</span><span id="toast"></span>' +
+    '<button class="relbtn' + (U.linkOk ? ' on' : '') + '" data-act="panel" aria-label="Relay connection"><i></i>Relay</button>' + ind('Lamp', U.linkOk && R.lamp) + ind('Safelight', U.linkOk && R.safe);
+  updateToast();
+}
+function renderNav() {
+  const nav = $('#nav');
+  nav.className = running(R.state) ? 'locked' : '';
+  nav.innerHTML = TABS.map(t => '<button class="' + (A.tab === t[0] ? 'on' : '') + '" data-act="tab" data-a="' + t[0] + '">' + t[1] + '</button>').join('');
+}
+function applyBright() {
+  // A web page cannot change the tablet's backlight; this only darkens the page's own pixels.
+  const dim = R.state === 'EXPOSING', f = (dim ? A.set.dim : A.set.bright) / 100;
+  $('#app').style.filter = 'brightness(' + f + ')';
+}
+
+function viewTime() {
+  const b = A.baseT / 10, nom = mainNom(), act = mainAct(), d = disAttr();
+  const corr = A.set.recipOn && Math.abs(act - nom) > 0.05;
+  const foc = R.state === 'FOCUS';
+  return '<div class="time"><div>' +
+    '<div class="lbl">Base time</div><div class="baserow">' + B('base', '\u2212', 'sq', 'data-a="-1" aria-label="Decrease base time"') +
+    '<button class="basev" data-act="keypad" aria-label="Enter base time"><span class="num">' + b.toFixed(1) + '</span><small>s</small></button>' +
+    B('base', '+', 'sq', 'data-a="1" aria-label="Increase base time"') + '</div>' +
+    '<div class="lbl">Start time presets</div><div class="row">' + PRESETS.map(p => B('preset', p, 'chip' + (A.baseT === p * 10 ? ' on' : ''), 'data-a="' + p + '"')).join('') + '</div>' +
+    '<div class="lbl">Step size, in stops per click</div><div class="row">' + ivChips() + '</div>' +
+    '<div class="lbl">Change exposure</div><div class="row">' +
+    B('off', '\u2212<small>' + IV[A.iv].l + ' stop</small>', 'big', 'data-a="-1" aria-label="Less exposure"') +
+    B('off', '+<small>' + IV[A.iv].l + ' stop</small>', 'big', 'data-a="1" aria-label="More exposure"') + '</div>' +
+    '</div><div class="tr">' +
+    '<div class="readout"><div><div class="lbl">Stops</div><div class="num">' + fmtStops(A.off) + '</div></div><div><div class="lbl">Time</div><div class="num">' + act.toFixed(1) + '<small>s</small></div></div></div>' +
+    (corr ? '<div class="note">Reciprocity added: ' + nom.toFixed(1) + ' s before compensation</div>' : '') +
+    '<button class="btn go" data-act="start" ' + d + '>Start</button>' +
+    '<div class="row" style="margin:0">' + B('focus', foc ? 'Focus light off' : 'Focus light on', 'tog' + (foc ? ' on' : ''), d) + B('safe', 'Safelight', 'tog' + (R.safeUser ? ' on' : ''), d) + '</div>' +
+    '<div class="bright"><span class="lbl" style="margin:0">Brightness</span><input type="range" min="10" max="100" value="' + A.set.bright + '" data-in="bright" aria-label="Screen brightness" ' + (foc ? '' : 'disabled') + '><span class="muted" id="focusrem"></span></div>' +
+    '<div class="row" style="margin:0">' + B('off0', 'Reset stops', 'chip') + B('setbase', 'Use as base', 'chip') + '</div>' +
+    '</div></div>';
+}
+
+function stripData() {
+  const b = A.baseT / 10, n = ivN(), tots = [];
+  for (let k = 0; k < 6; k++) tots.push(actTime(b, k * n));
+  return { b, n, tots };
+}
+function viewStrip() {
+  const { n, tots, b } = stripData(), d = disAttr();
+  const top = tots[5];
+  const strips = [1, 2, 3, 4, 5, 6].map(s => {
+    const k = 6 - s, a = 0.06 + 0.34 * (tots[k] - tots[0]) / Math.max(top - tots[0], 0.001);
+    return '<button class="btn strip' + (U.selStrip === s ? ' sel' : '') + '" style="background:rgba(255,0,0,' + a.toFixed(3) + ')" data-act="strip" data-a="' + s + '" aria-label="Strip ' + s + '">' +
+      '<span class="sn">' + s + '</span><span class="num sv">' + fmtStops(k * n) + '</span><span class="st">' + tots[k].toFixed(1) + ' s</span></button>';
+  }).join('');
+  let rows = '<div class="h">Step</div><div class="h">Cover from right</div><div class="h">Add time</div><div class="h">Reaches</div>';
+  for (let k = 0; k < 6; k++) rows += '<div>' + (k + 1) + '</div><div>' + (k ? k + '/6' : 'nothing') + '</div><div>' + ((tots[k] - (k ? tots[k - 1] : 0)).toFixed(1)) + ' s</div><div>' + tots[k].toFixed(1) + ' s</div>';
+  return '<div class="stripwrap"><div>' +
+    '<div class="lbl">Test strips, left to right. Strip 1 gets the most light.</div><div class="strips">' + strips + '</div>' +
+    '<div class="tbl">' + rows + '</div></div>' +
+    '<div class="rcol">' +
+    '<div class="mini">' + B('base', '\u2212', 'sq s', 'data-a="-1" aria-label="Decrease base time"') + '<button class="basev" data-act="keypad" aria-label="Enter base time"><span class="num">' + b.toFixed(1) + '</span><small>s</small></button>' + B('base', '+', 'sq s', 'data-a="1" aria-label="Increase base time"') + '</div>' +
+    '<div class="lbl" style="margin:0">Step size</div><div class="row" style="margin:0">' + ivChips() + '</div>' +
+    '<div class="row" style="margin:0;align-items:center;justify-content:space-between"><span class="lbl" style="margin:0">Step gap</span>' + stepper('gap') + '</div>' +
+    '<button class="btn go sm" data-act="start' + '" ' + d + '>Start strip test</button>' +
+    B('usestrip', 'Use selected strip', 'chip', U.selStrip ? '' : 'disabled') +
+    '</div></div>';
+}
+function stepper(key) {
+  return '<div class="stp">' + B('set', '\u2212', 'sq s', 'data-key="' + key + '" data-dir="-1" aria-label="Decrease"') + '<span class="sv">' + SETDEF[key].fmt(A.set[key]) + '</span>' + B('set', '+', 'sq s', 'data-key="' + key + '" data-dir="1" aria-label="Increase"') + '</div>';
+}
+function viewRecipe() {
+  const m = mainNom(), main = mainAct(), d = disAttr();
+  let lamp = main;
+  const rows = A.recipe.map(e => {
+    const isB = e.type === 'burn';
+    const t = isB ? Rcp(m * Math.pow(2, e.n / 12)) - main : main - Rcp(m * Math.pow(2, -e.n / 12));
+    if (isB) lamp += t;
+    return '<div class="entry"><span class="badge ' + e.type + '">' + (isB ? 'Burn' : 'Dodge') + '</span><span class="num es">' + fmtStops(isB ? e.n : -e.n) + '</span><span class="et">' + (isB ? 'add ' : 'hold back ') + t.toFixed(1) + ' s</span>' +
+      B('rn', '\u2212', 'sq s', 'data-a="' + e.id + '" data-b="-1" aria-label="Less"') + B('rn', '+', 'sq s', 'data-a="' + e.id + '" data-b="1" aria-label="More"') + B('rdel', '\u2715', 'sq s', 'data-a="' + e.id + '" aria-label="Remove"') + '</div>';
+  }).join('');
+  const saved = A.saved.map(s => '<span style="display:flex;gap:6px">' + B('rload', esc(s.name), 'chip', 'data-a="' + s.id + '"') + B('rdelsaved', '\u2715', 'chip x', 'data-a="' + s.id + '" aria-label="Delete ' + esc(s.name) + '"') + '</span>').join('');
+  return '<div class="recwrap"><div>' +
+    '<div class="lbl">Main exposure ' + main.toFixed(1) + ' s (base ' + (A.baseT / 10).toFixed(1) + ' s, ' + fmtStops(A.off) + ' stops). Burns and dodges are relative to it.</div>' +
+    '<div class="list">' + (rows || '<div class="empty">No burns or dodges yet. Add one below. Each is timed relative to the main exposure.</div>') + '</div>' +
+    '<div class="row" style="margin:0">' + B('addburn', '+ Burn', 'chip') + B('adddodge', '+ Dodge', 'chip') + '</div></div>' +
+    '<div class="rcol"><div class="readout sm"><div><div class="lbl">Lamp time</div><div class="num">' + lamp.toFixed(1) + '<small>s</small></div></div><div><div class="lbl">Steps</div><div class="num">' + (1 + A.recipe.filter(e => e.type === 'burn').length) + '</div></div></div>' +
+    '<button class="btn go" data-act="start" ' + d + '>Start recipe</button>' +
+    '<div class="lbl" style="margin:0">Step size</div><div class="row" style="margin:0">' + ivChips() + '</div>' +
+    B('rsave', 'Save this recipe', 'chip') +
+    (saved ? '<div class="saved">' + saved + '</div>' : '') + '</div></div>';
+}
+function viewLog() {
+  const kn = { single: 'Exposure', strip: 'Strip test', recipe: 'Recipe' };
+  const rows = A.log.map(e => '<div class="lrow"><span>' + new Date(e.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</span><span>' + kn[e.kind] + '</span><span>' + esc(e.meta) + '. Lamp time ' + (e.total / 1000).toFixed(1) + ' s</span>' +
+    '<input data-in="lognote" data-id="' + e.id + '" value="' + esc(e.note) + '" placeholder="Add a note" aria-label="Note"></div>').join('');
+  return '<div class="logv"><div class="lhead"><span>Time</span><span>Type</span><span>What was exposed</span><span>Note</span></div>' +
+    '<div class="loglist">' + (rows || '<div class="empty">Nothing logged yet. Each completed exposure is saved here automatically.</div>') + '</div>' +
+    '<div class="row" style="margin:8px 0 0">' + B('logclear', 'Clear log', 'chip', 'style="flex:none;width:250px"' + (A.log.length ? '' : ' disabled')) + '</div></div>';
+}
+const SIZES = [['4x5', '4 \u00d7 5'], ['5x7', '5 \u00d7 7'], ['8x10', '8 \u00d7 10'], ['11x14', '11 \u00d7 14'], ['12x16', '12 \u00d7 16'], ['16x20', '16 \u00d7 20'], ['20x24', '20 \u00d7 24']];
+function scaleHTML() {
+  const s = A.scale;
+  if (!(s.aw > 0 && s.ah > 0 && s.bw > 0 && s.bh > 0)) return '<div class="empty" style="padding:0">Enter both print sizes to see the change in stops.</div>';
+  const stops = Math.log2((s.bw * s.bh) / (s.aw * s.ah)), tw = Math.round(stops * 12), nb = (A.baseT / 10) * Math.pow(2, stops);
+  return '<div class="lbl">Change in exposure</div><div class="num">' + (stops >= 0 ? '+' : '\u2212') + Math.abs(stops).toFixed(2) + '<small>stops</small></div>' +
+    '<div class="lbl" style="margin-top:8px">Nearest twelfth of a stop: ' + fmtStops(tw) + '. New base time ' + nb.toFixed(1) + ' s.</div>' +
+    '<div class="row" style="margin:10px 0 0">' + B('applyscale', 'Apply to base time', 'chip', 'style="height:70px"') + '</div>';
+}
+function viewScale() {
+  const s = A.scale;
+  const side = (k, name) => {
+    const cur = s[k + 'w'] + 'x' + s[k + 'h'];
+    return '<div class="szrow"><span class="cap">' + name + '</span><input type="number" min="1" step="any" value="' + s[k + 'w'] + '" data-in="scale" data-f="' + k + 'w" aria-label="' + name + ' width"><span>\u00d7</span><input type="number" min="1" step="any" value="' + s[k + 'h'] + '" data-in="scale" data-f="' + k + 'h" aria-label="' + name + ' height">' +
+      '<select data-in="scalePreset" data-side="' + k + '" aria-label="' + name + ' preset"><option value="">Common sizes (inches)</option>' + SIZES.map(z => '<option value="' + z[0] + '"' + (z[0] === cur ? ' selected' : '') + '>' + z[1] + '</option>').join('') + '</select></div>';
+  };
+  return '<div class="scv"><div><div class="lbl">Enter both sizes in the same unit. Exposure scales with print area.</div>' + side('a', 'Current print') + side('b', 'New print') + '</div>' +
+    '<div class="scres" id="scRes">' + scaleHTML() + '</div></div>';
+}
+function viewSet() {
+  const row = (label, hint, ctl) => '<div class="srow"><span>' + label + (hint ? '<small>' + hint + '</small>' : '') + '</span>' + ctl + '</div>';
+  const tog = (key, label, hint) => row(label, hint, B('toggle', A.set[key] ? 'On' : 'Off', 'tog' + (A.set[key] ? ' on' : ''), 'data-key="' + key + '"'));
+  return '<div class="setv"><div>' +
+    row('Strip test gap', 'Enlarger off while you move the card', stepper('gap')) +
+    row('Lamp latency offset', 'Added to every lamp switch-on', stepper('lat')) +
+    row('Focus light timeout', 'Enforced by the relay unit', stepper('focusMin')) +
+    row('Beep volume', 'Every second and at each step', stepper('vol')) +
+    tog('mute', 'Mute beeps', '') +
+    '</div><div>' +
+    row('Screen dim while exposing', '', stepper('dim')) +
+    tog('safeAuto', 'Safelight off while exposing', '') +
+    tog('recipOn', 'Reciprocity compensation', 'Placeholder power law for long exposures') +
+    row('Reciprocity starts above', '', stepper('recipThr')) +
+    row('Reciprocity exponent', 'Time multiplier grows with this power', stepper('recipK')) +
+    '</div></div>';
+}
+
+function genericPlan() {
+  return { kind: R.kind || 'single', steps: Array.from({ length: Math.max(R.steps, 1) }, (_, j) => ({ ms: 0, label: 'Step ' + (j + 1), stops: 0 })) };
+}
+function viewRun() {
+  const plan = U.runPlan || genericPlan();
+  const st = R.state === 'PAUSED' ? (R.pf || 'EXPOSING') : R.state;
+  const n = plan.steps.length;
+  const i = clamp(st === 'GAP' ? R.idx + 1 : R.idx, 0, n - 1);
+  const step = plan.steps[i];
+  const kn = { single: 'Exposure', strip: 'Strip test', recipe: 'Recipe' }[plan.kind] || 'Exposure';
+  const title = (n > 1 ? kn + ', step ' + (i + 1) + ' of ' + n : kn) + (R.state === 'PAUSED' ? ', paused' : '');
+  const d = disAttr();
+  let l1 = st === 'GAP' ? 'Enlarger off' : R.state === 'PAUSED' ? 'Enlarger off, paused' : 'Enlarger on', l2 = '';
+  if (st === 'GAP') l2 = plan.kind === 'strip' ? step.label : 'Get ready: ' + step.label;
+  else if (plan.kind === 'strip') l2 = i === 0 ? 'Whole sheet' : 'Strips 1 to ' + (6 - i);
+  else if (plan.kind === 'recipe') l2 = step.label;
+  const cap = st === 'GAP' ? 'until the next exposure' : 'remaining';
+  let vis = '';
+  if (plan.kind === 'strip') {
+    vis = '<div class="mstrips">' + [1, 2, 3, 4, 5, 6].map(s => '<div class="mstrip ' + (s > 6 - i ? 'cov' : 'lit') + '">' + s + '</div>').join('') + '</div>';
+  } else if (plan.kind === 'recipe') {
+    vis = '<div class="steps">' + plan.steps.map((s, j) => '<div class="stpl ' + (j < i ? 'done' : j === i ? 'cur' : '') + '"><span>' + esc(s.label) + '</span><span>' + (s.ms / 1000).toFixed(1) + ' s</span></div>').join('') + '</div>';
+    if (st === 'EXPOSING' && i === 0 && step.cues && step.cues.length)
+      vis += '<div class="cues">' + step.cues.map((c, j) => '<div class="cue" id="cue' + j + '" data-hold="' + c.holdMs + '"><span>' + esc(c.label) + '</span><span class="cs"></span></div>').join('') + '</div>';
+  }
+  return '<div class="run"><div class="rl">' +
+    '<div class="rtitle">' + esc(title) + '</div>' +
+    '<div class="cdbox"><div class="cd num" id="cd">0.0</div><div class="cdcap">' + cap + '</div></div>' +
+    '<div class="pr1">' + l1 + '</div><div class="pr2">' + esc(l2) + '</div>' +
+    '<div class="runbtns">' + (R.state === 'PAUSED' ? '<button class="btn go" data-act="resume" ' + d + '>Resume</button>' : '<button class="tog2" data-act="pause" ' + d + '>Pause</button>') + '<button class="tog2" data-act="cancel" ' + d + '>Cancel</button></div>' +
+    '</div><div class="rr">' +
+    '<div class="readout sm"><div><div class="lbl">Stops</div><div class="num">' + fmtStops(step.stops || 0) + '</div></div><div><div class="lbl">' + (plan.kind === 'single' ? 'Time' : 'This step') + '</div><div class="num">' + (step.ms ? (step.ms / 1000).toFixed(1) : sec1(R.total)) + '<small>s</small></div></div></div>' +
+    vis + '</div></div>';
+}
+const sec1 = ms => (ms / 1000).toFixed(1);
+
+function bannerHTML() {
+  const run = running(R.state);
+  if (!U.linkOk) {
+    let text, btn = '';
+    if (!Ble.supported) text = 'This browser has no Web Bluetooth. Use Chrome on Android.';
+    else if (Ble.connecting) text = 'Connecting to the relay...';
+    else if (!Ble.dev) { text = 'Not connected to the relay.'; btn = '<button class="bbtn" data-act="bleChoose">Connect</button>'; }
+    else { text = 'Bluetooth connection lost.' + (run ? ' The relay keeps timing. Use the foot pedal to pause or cancel.' : ''); btn = '<button class="bbtn" data-act="bleRetry">Reconnect</button>'; }
+    return '<div class="banner">' + text + btn + '</div>';
+  }
+  return R.state === 'FAULT' ? '<div class="banner">' + esc(R.fault || 'Fault') + '.</div>' : '';
+}
+function renderMainView() {
+  let html;
+  const banner = bannerHTML();
+  if (running(R.state)) html = viewRun();
+  else html = { time: viewTime, strip: viewStrip, recipe: viewRecipe, log: viewLog, scale: viewScale, set: viewSet }[A.tab]();
+  $('#main').innerHTML = banner + html;
+}
+function panelHTML() {
+  const bt = !Ble.supported ? 'not available in this browser' : Ble.connected ? 'connected' : Ble.connecting ? 'connecting' : Ble.dev ? 'reconnecting' : 'not connected';
+  const fs = !!document.fullscreenElement || (window.matchMedia && matchMedia('(display-mode: fullscreen)').matches);
+  const rows = [['Bluetooth', bt], ['Relay', Ble.dev ? (Ble.dev.name || 'unnamed') : 'none chosen'],
+    ['Firmware', Ble.info ? 'protocol ' + Ble.info[0] + ', version ' + Ble.info[1] + '.' + Ble.info[2] : 'unknown'],
+    ['Status updates', U.linkOk ? 'arriving' : 'none'], ['Screen kept on', wakeLock ? 'yes' : 'no'], ['Full screen', fs ? 'yes' : 'no'], ['Last error', Ble.lastError || 'none']];
+  return '<div class="scrim"><div class="rpanel"><h3>Relay connection</h3><div class="kvs">' + rows.map(r => '<span class="k">' + r[0] + '</span><span>' + esc(r[1]) + '</span>').join('') + '</div>' +
+    '<div class="rlog">' + MLOG.slice(0, 40).map(m => '<div><span>' + m.t.toFixed(1) + '</span><span>' + esc(m.dir) + '</span><span>' + esc(m.text) + '</span></div>').join('') + '</div>' +
+    '<div class="rbtns"><button class="btn chip" data-act="bleRetry">Reconnect</button><button class="btn chip" data-act="bleChoose">Choose relay</button><button class="btn chip" data-act="bleDisconnect">Disconnect</button><button class="btn chip" data-act="fullscreen">Full screen</button><button class="btn chip on" data-act="panel">Close</button></div></div></div>';
+}
+function renderOverlay() {
+  const o = $('#overlay');
+  if (U.panel) { o.innerHTML = panelHTML(); return; }
+  if (!U.keypad) { o.innerHTML = ''; return; }
+  const keys = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '.', '0', 'back'];
+  o.innerHTML = '<div class="scrim"><div class="kp"><div class="lbl">Base time in seconds</div><div class="kpd num">' + esc(U.keypad.buf || '0') + '</div><div class="kpg">' +
+    keys.map(k => '<button data-act="kp" data-a="' + k + '">' + (k === 'back' ? '\u232b' : k) + '</button>').join('') +
+    '<button data-act="kp" data-a="cancel">Cancel</button><button class="ok" data-act="kp" data-a="ok" style="grid-column:span 2">Set</button></div></div></div>';
+}
+function focusKey() {
+  const f = document.activeElement;
+  return f && f.dataset && f.dataset.act && screen.contains(f) ? [f.dataset.act, f.dataset.a || '', f.dataset.b || '', f.dataset.key || '', f.dataset.dir || ''] : null;
+}
+function restoreFocus(k) {
+  if (!k) return;
+  const sel = '[data-act="' + k[0] + '"]' + (k[1] ? '[data-a="' + k[1] + '"]' : '') + (k[2] ? '[data-b="' + k[2] + '"]' : '') + (k[3] ? '[data-key="' + k[3] + '"]' : '') + (k[4] ? '[data-dir="' + k[4] + '"]' : '');
+  const el = $(sel, screen);
+  if (el) el.focus({ preventScroll: true });
+}
+function renderAll() {
+  const fk = focusKey();
+  renderSeg(); renderStatus(); renderNav(); renderMainView(); renderOverlay(); applyBright();
+  restoreFocus(fk);
+}
+function changed() { save(); syncArm(); renderAll(); }
+
+
+/* ================= input handling on the main screen ================= */
+screen.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  act(el.dataset.act, el.dataset);
+});
+screen.addEventListener('input', e => {
+  const t = e.target, k = t.dataset.in; if (!k) return;
+  if (k === 'bright') { A.set.bright = +t.value; applyBright(); save(); }
+  else if (k === 'lognote') { const en = A.log.find(x => String(x.id) === t.dataset.id); if (en) { en.note = t.value; save(); } }
+  else if (k === 'scale') { A.scale[t.dataset.f] = parseFloat(t.value) || 0; save(); const r = $('#scRes'); if (r) r.innerHTML = scaleHTML(); }
+});
+screen.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.in === 'scalePreset' && t.value) {
+    const [w, h] = t.value.split('x').map(Number), s = t.dataset.side;
+    A.scale[s + 'w'] = w; A.scale[s + 'h'] = h; save(); renderMainView();
+  }
+});
+
+function act(name, d) {
+  const a = d.a, b = d.b;
+  switch (name) {
+    case 'panel': U.panel = !U.panel; renderOverlay(); break;
+    case 'bleChoose': Ble.choose(); break;
+    case 'bleRetry': Ble.want = true; Ble.retry = 0; Ble.connect(); break;
+    case 'bleDisconnect': Ble.disconnect(); break;
+    case 'fullscreen': goFullscreen(); break;
+    case 'tab': A.tab = a; U.keypad = null; changed(); break;
+    case 'base': A.baseT = clamp(A.baseT + (+a) * 5, 5, 9999); changed(); break;
+    case 'preset': A.baseT = +a * 10; changed(); break;
+    case 'keypad': U.keypad = { buf: '' }; renderOverlay(); break;
+    case 'kp': keypad(a); break;
+    case 'iv': A.iv = +a; changed(); break;
+    case 'off': A.off = clamp(A.off + (+a) * ivN(), -60, 60); changed(); break;
+    case 'off0': A.off = 0; changed(); break;
+    case 'setbase': A.baseT = clamp(Math.round(mainNom() * 10), 5, 9999); A.off = 0; toast('Base time set to ' + (A.baseT / 10).toFixed(1) + ' s'); changed(); break;
+    case 'start': doStart(); break;
+    case 'pause': toRelay('PAUSE'); break;
+    case 'resume': toRelay('RESUME'); break;
+    case 'cancel': toRelay('CANCEL'); break;
+    case 'focus': toRelay('FOCUS', { on: R.state !== 'FOCUS' }); break;
+    case 'safe': toRelay('SAFELIGHT', { on: !R.safeUser }); break;
+    case 'strip': U.selStrip = U.selStrip === +a ? null : +a; renderMainView(); break;
+    case 'usestrip': if (U.selStrip) { A.off = (6 - U.selStrip) * ivN(); A.tab = 'time'; toast('Exposure set to ' + fmtStops(A.off) + ' stops from strip ' + U.selStrip); changed(); } break;
+    case 'addburn': case 'adddodge': A.recipe.push({ id: ++A.rid, type: name === 'addburn' ? 'burn' : 'dodge', n: ivN() }); if (A.recipe.length > 8) A.recipe.shift(); changed(); break;
+    case 'rn': { const e = A.recipe.find(x => String(x.id) === a); if (e) { e.n = clamp(e.n + (+b) * ivN(), 1, 48); changed(); } break; }
+    case 'rdel': A.recipe = A.recipe.filter(x => String(x.id) !== a); changed(); break;
+    case 'rsave': A.saved.push({ id: ++A.rid, name: 'Recipe ' + (A.saved.length + 1), baseT: A.baseT, off: A.off, iv: A.iv, recipe: JSON.parse(JSON.stringify(A.recipe)) }); if (A.saved.length > 6) A.saved.shift(); toast('Recipe saved'); changed(); break;
+    case 'rload': { const s = A.saved.find(x => String(x.id) === a); if (s) { A.baseT = s.baseT; A.off = s.off; A.iv = s.iv; A.recipe = JSON.parse(JSON.stringify(s.recipe)); A.recipe.forEach(x => { x.id = ++A.rid; }); toast('Loaded ' + s.name); changed(); } break; }
+    case 'rdelsaved': A.saved = A.saved.filter(x => String(x.id) !== a); changed(); break;
+    case 'logclear': A.log = []; changed(); break;
+    case 'applyscale': { const s = A.scale; const st = Math.log2((s.bw * s.bh) / (s.aw * s.ah)); A.baseT = clamp(Math.round((A.baseT / 10) * Math.pow(2, st) * 10), 5, 9999); A.scale.aw = s.bw; A.scale.ah = s.bh; toast('Base time is now ' + (A.baseT / 10).toFixed(1) + ' s'); changed(); break; }
+    case 'set': {
+      const k = d.key, dir = +d.dir, def = SETDEF[k]; let v = A.set[k];
+      if (def.opts) v = def.opts[clamp(def.opts.indexOf(v) + dir, 0, def.opts.length - 1)];
+      else v = clamp(Math.round((v + dir * def.step) * 100) / 100, def.min, def.max);
+      A.set[k] = v; pushConfig(); changed(); break;
+    }
+    case 'toggle': A.set[d.key] = !A.set[d.key]; pushConfig(); changed(); break;
+  }
+}
+function keypad(k) {
+  const p = U.keypad; if (!p) return;
+  if (k === 'cancel') U.keypad = null;
+  else if (k === 'back') p.buf = p.buf.slice(0, -1);
+  else if (k === 'ok') {
+    const v = parseFloat(p.buf);
+    if (v >= 0.5 && v <= 999.9) { A.baseT = Math.round(v * 10); U.keypad = null; changed(); return; }
+    toast('Enter a time from 0.5 to 999.9 s', 3000, true);
+  }
+  else if (k === '.') { if (!p.buf.includes('.')) p.buf += p.buf ? '.' : '0.'; }
+  else if (/^\d$/.test(k)) { if (p.buf.replace('.', '').length < 5 && !/\.\d$/.test(p.buf)) p.buf += k; }
+  renderOverlay();
+}
+function doStart() {
+  if (!U.linkOk) return;
+  syncArm(true); toRelay('START');
+}
+
+
+/* ================= live updates every frame ================= */
+function renderLive() {
+  const now = perf();
+  const cd = $('#cd');
+  if (cd) { cd.textContent = (U.linkOk ? '' : '~') + (remEst() / 1000).toFixed(1); cd.classList.toggle('stale', !U.linkOk); }
+  // segment bar
+  const segs = $$('#segbar .seg');
+  if (segs.length) {
+    const st = R.state === 'PAUSED' ? R.pf : R.state, r = remEst();
+    segs.forEach((sg, i) => {
+      let f = 0, nx = false;
+      if (running(R.state)) {
+        if (st === 'EXPOSING') { if (i < R.idx) f = 100; else if (i === R.idx) f = R.total ? (1 - r / R.total) * 100 : 0; }
+        else if (st === 'GAP') { if (i <= R.idx) f = 100; if (i === R.idx + 1) nx = true; }
+      }
+      sg.firstChild.style.width = clamp(f, 0, 100) + '%'; sg.classList.toggle('next', nx);
+    });
+  }
+  // dodge cues
+  $$('.cue').forEach(c => {
+    const hold = +c.dataset.hold, el = R.total - remEst(), cs = c.querySelector('.cs');
+    const holding = R.state === 'EXPOSING' && el < hold;
+    c.classList.toggle('hold', holding);
+    cs.textContent = holding ? 'Hold, ' + ((hold - el) / 1000).toFixed(1) + ' s left' : 'Release';
+  });
+  const fr = $('#focusrem');
+  if (fr) fr.textContent = R.state === 'FOCUS' && R.focusRem != null ? 'Off in ' + Math.floor(R.focusRem / 60000) + ':' + String(Math.floor(R.focusRem / 1000) % 60).padStart(2, '0') : '';
+  if (U.toast && now > U.toast.until) { U.toast = null; }
+  updateToast();
+
+}
+
+
+/* ================= layout: fit the 16:10 screen to the window ================= */
+function fit() {
+  const W = window.innerWidth, H = window.innerHeight, s = Math.min(W / 1280, H / 800);
+  const x = (W - 1280 * s) / 2, y = (H - 800 * s) / 2;
+  screen.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + s + ')';
+}
+window.addEventListener('resize', fit);
+document.addEventListener('fullscreenchange', () => { fit(); if (U.panel) renderOverlay(); });
+
+/* ================= timers and boot ================= */
+setInterval(() => { if (Ble.connected) toRelay('PING'); }, 500);
+setInterval(() => {
+  if (U.linkOk && perf() - U.rxAt > 1000) { U.linkOk = false; mlog('App', 'no status from the relay: link lost'); renderAll(); }
+}, 250);
+(function frame() { renderLive(); requestAnimationFrame(frame); })();
+
+mlog('App', 'started; last settings restored');
+renderAll(); fit(); wake();
+(async () => {
+  try {
+    if (Ble.supported && navigator.bluetooth.getDevices) {          // remembered relay: reconnect without the pairing list
+      const ds = await navigator.bluetooth.getDevices();
+      const d = ds.find(x => /^FStop/.test(x.name || '')) || ds[0];
+      if (d) { Ble.attach(d); Ble.want = true; Ble.connect(); }
+    }
+  } catch (e) { /* not available */ }
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+
+})();
+</script>
+</body>
+</html>

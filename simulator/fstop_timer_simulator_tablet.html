@@ -1,0 +1,1419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>F-stop timer simulator (tablet)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e7e9ed; --panel:#f6f7f9; --text:#13161a; --muted:#566070; --border:#c3c9d2; --field:#ffffff; --accent:#a80000; --good:#0b7a3e;
+  --r0:#000000; --r1:#260000; --r2:#4d0000; --r3:#880000; --r4:#d60000; --r5:#ff1414;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#0d0f12; --panel:#171a1f; --text:#e4e7eb; --muted:#8c95a3; --border:#2b3039; --field:#0f1215; --accent:#ff5050; --good:#43c47f; }
+}
+:root[data-theme="dark"]{ --bg:#0d0f12; --panel:#171a1f; --text:#e4e7eb; --muted:#8c95a3; --border:#2b3039; --field:#0f1215; --accent:#ff5050; --good:#43c47f; }
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.5 'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:18px 16px 40px}
+h1{font:600 30px/1.1 'Barlow Condensed','Arial Narrow','Liberation Sans Narrow','DejaVu Sans Condensed',sans-serif;margin:0 0 4px}
+h2{font:600 19px/1.2 'Barlow Condensed','Arial Narrow','Liberation Sans Narrow','DejaVu Sans Condensed',sans-serif;margin:0 0 4px}
+.sub{margin:0 0 14px;color:var(--muted);max-width:70ch}
+.tabs{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+.tabs button{font:600 17px/1 'Barlow Condensed',sans-serif;padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.hint{color:var(--muted);margin:0 0 10px;font-size:15px}
+
+/* device frame */
+.bezel{background:#1b1e23;border-radius:38px;padding:22px 26px;max-width:1340px;position:relative;margin:0 auto;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.stagebox{position:relative;width:100%;height:800px;border-radius:10px;overflow:hidden;background:#000}
+
+/* ---------- the 1280x800 tablet screen (16:10): red on black ---------- */
+#screen{position:absolute;left:0;top:0;width:1280px;height:750px;background:#000;color:var(--r5);font-family:'Barlow Condensed','Arial Narrow','Liberation Sans Narrow','DejaVu Sans Condensed',sans-serif;font-weight:500;overflow:hidden;transform-origin:0 0;transition:filter .35s;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#screen *{box-sizing:border-box}
+:where(#screen) button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#screen button:disabled{opacity:.3;cursor:not-allowed}
+#screen button:focus-visible,#screen input:focus-visible,#screen select:focus-visible{outline:2px dashed var(--r5);outline-offset:4px}
+:where(#screen) small{font-size:.42em;font-weight:500;margin-left:8px;color:var(--r4)}
+.num{font-weight:700;font-variant-numeric:tabular-nums;line-height:.92;text-shadow:0 0 20px rgba(255,0,0,.38)}
+.lbl{color:var(--r4);font-size:26px;margin:0 0 6px;line-height:1.1}
+.muted{color:var(--r4)}
+#segbar{position:absolute;left:0;right:0;top:0;height:18px;display:flex;gap:4px;padding:4px 4px 0}
+.seg{flex:1;background:var(--r1);border-radius:2px;overflow:hidden;position:relative}
+.seg i{display:block;height:100%;width:0;background:var(--r5)}
+.seg.next{outline:1px solid var(--r5);outline-offset:-1px}
+#status{position:absolute;left:0;right:0;top:18px;height:52px;display:flex;align-items:center;gap:20px;padding:0 18px;font-size:26px;border-bottom:1px solid var(--r2)}
+.schip{min-width:155px;padding:4px 15px 2px;border:2px solid var(--r4);border-radius:8px;text-align:center;font-weight:700;font-size:29px}
+.schip.exp{background:var(--r5);color:#000;border-color:var(--r5)}
+.schip.warn{border-style:dashed}
+#toast{flex:1;color:var(--r4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast.hot{color:var(--r5)}
+.ind{display:flex;align-items:center;gap:8px;color:var(--r3)}
+.ind i{width:15px;height:15px;border-radius:50%;border:2px solid var(--r3)}
+.ind.on{color:var(--r5)}
+.ind.on i{background:var(--r5);border-color:var(--r5);box-shadow:0 0 10px var(--r5)}
+#main{position:absolute;left:0;right:0;top:70px;height:600px;padding:18px 25px}
+#nav{position:absolute;left:0;right:0;top:670px;height:80px;display:flex;border-top:1px solid var(--r2)}
+#nav button{flex:1;font-size:32px;font-weight:600;color:var(--r4);border-right:1px solid var(--r1)}
+#nav button:last-child{border-right:0}
+#nav button.on{background:var(--r5);color:#000}
+#nav.locked button{opacity:.3;pointer-events:none}
+.banner{position:absolute;left:0;right:0;top:0;z-index:5;height:42px;background:var(--r5);color:#000;font-size:28px;font-weight:600;padding:6px 25px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.banner+div{margin-top:45px;height:calc(100% - 45px)}
+
+.btn,.chip,.sq,.big,.tog,.go,.strip,.basev{border:2px solid var(--r4);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.btn.on{background:var(--r5)!important;color:#000!important;border-color:var(--r5)!important}
+.btn.on small{color:#000!important}
+.sq{width:95px;height:95px;font-size:68px;font-weight:600;flex:none}
+.sq.s{width:62px;height:58px;font-size:42px;border-radius:10px}
+.chip{flex:1;height:65px;font-size:35px;font-weight:600;border-radius:10px;padding:0 8px}
+.row{display:flex;gap:12px;margin-bottom:15px}
+.big{flex:1;height:120px;flex-direction:column;font-size:82px;font-weight:600;border-radius:15px;line-height:.9}
+.big small{font-size:28px;margin:0;color:var(--r4)}
+.go{white-space:nowrap;height:115px;background:var(--r5);color:#000;border-color:var(--r5);font-size:70px;font-weight:700;border-radius:15px;width:100%}
+.tog{flex:1;height:65px;font-size:31px;font-weight:600;border-radius:10px}
+
+/* time view */
+.time{display:grid;grid-template-columns:690px 1fr;gap:38px;height:100%}
+.baserow{display:flex;align-items:center;gap:15px;margin-bottom:15px}
+.basev{flex:1;height:95px;border-color:var(--r2);align-items:baseline;padding-top:8px}
+.basev .num{font-size:92px}
+.basev small{font-size:38px}
+.tr{display:flex;flex-direction:column;gap:12px;min-width:0}
+.readout{display:grid;grid-template-columns:1fr 1fr;gap:10px;border:2px solid var(--r3);border-radius:15px;padding:12px 18px 10px;height:185px}
+.readout .num{font-size:95px;white-space:nowrap}
+.readout.sm{height:auto;padding:10px 15px;margin-bottom:12px}
+.readout.sm .num{font-size:65px}
+.note{color:var(--r4);font-size:25px;margin-top:-4px}
+.bright{display:flex;align-items:center;gap:15px;height:45px}
+.bright input{flex:1}
+#screen input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:38px;margin:0}
+#screen input[type=range]::-webkit-slider-runnable-track{height:10px;background:var(--r2);border-radius:5px}
+#screen input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:35px;height:35px;margin-top:-10px;border-radius:50%;background:var(--r5);border:2px solid #000}
+#screen input[type=range]::-moz-range-track{height:10px;background:var(--r2);border-radius:5px}
+#screen input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--r5);border:2px solid #000}
+#screen input[type=range]:disabled{opacity:.35}
+.bright #focusrem{min-width:138px;text-align:right}
+
+/* strip view */
+.stripwrap{display:grid;grid-template-columns:775px 1fr;gap:32px;height:100%}
+.strips{display:flex;gap:10px;margin-bottom:15px}
+.strip{flex:1;height:172px;flex-direction:column;justify-content:space-between;padding:10px 5px;border-radius:10px}
+.strip .sn{font-size:30px;color:var(--r4)}
+.strip .sv{font-size:38px;white-space:nowrap}
+.strip .st{font-size:29px;color:var(--r5)}
+.strip.sel{border-width:5px;border-color:var(--r5)}
+.tbl{display:grid;grid-template-columns:88px 1fr 1fr 1fr;font-size:29px}
+.tbl>div{padding:4px 10px;border-bottom:1px solid var(--r1);line-height:1.15}
+.tbl .h{color:var(--r4)}
+.rcol{display:flex;flex-direction:column;gap:12px;min-width:0}
+.rcol>.btn,.rcol>.row,.rcol>.mini,.rcol>.saved{flex:none}
+.rcol .chip{min-width:0;padding:0}
+.go.sm{font-size:52px}
+.mini{display:flex;align-items:center;gap:12px}
+.mini .basev{height:80px}
+.mini .basev .num{font-size:62px}
+.mini .basev small{font-size:30px}
+.stp{display:flex;align-items:center;gap:10px}
+.stp .sv{min-width:102px;text-align:center;font-size:38px;font-weight:600}
+
+/* recipe view */
+.recwrap{display:grid;grid-template-columns:762px 1fr;gap:32px;height:100%}
+.list{height:360px;overflow-y:auto;padding-right:8px;margin-bottom:10px}
+.entry{display:flex;align-items:center;gap:15px;height:70px;border:2px solid var(--r2);border-radius:10px;padding:0 10px;margin-bottom:10px}
+.badge{width:98px;text-align:center;border:2px solid var(--r4);border-radius:8px;font-size:28px;font-weight:600;padding:2px 0}
+.badge.dodge{border-style:dashed}
+.es{font-size:48px;width:130px}
+.et{flex:1;font-size:32px}
+.empty{color:var(--r4);font-size:32px;line-height:1.25;padding:25px 5px;max-width:650px}
+.saved{display:flex;flex-wrap:wrap;gap:10px}
+.saved .chip{flex:none;height:55px;font-size:29px;padding:0 15px}
+.saved .x{width:55px;flex:none}
+
+/* log, scale, settings */
+.logv{height:100%}
+.lhead,.lrow{display:grid;grid-template-columns:120px 135px 1fr 312px;gap:12px;align-items:center;padding:5px 8px;font-size:29px}
+.lhead{color:var(--r4);border-bottom:1px solid var(--r2)}
+.lrow{border-bottom:1px solid var(--r1);min-height:62px}
+.lrow input,.scv input,.scv select{background:#000;color:var(--r5);border:2px solid var(--r3);border-radius:8px;font:inherit;font-size:30px;padding:5px 10px;width:100%;min-width:0}
+.lrow input::placeholder{color:var(--r3)}
+.loglist{height:415px;overflow-y:auto}
+.scv{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.szrow{display:grid;grid-template-columns:188px 1fr 32px 1fr;gap:12px;align-items:center;margin-bottom:18px}
+.szrow .cap{font-size:32px;grid-row:span 2}
+.scv select{grid-column:2 / 5;margin-bottom:0}
+.scres{border:2px solid var(--r3);border-radius:15px;padding:20px 22px}
+.scres .num{font-size:88px}
+.setv{display:grid;grid-template-columns:1fr 1fr;gap:8px 45px}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:15px;min-height:75px;border-bottom:1px solid var(--r1);font-size:31px;line-height:1.1}
+.srow small{display:block;margin:2px 0 0;font-size:24px;color:var(--r4)}
+.srow .tog{flex:none;width:130px;height:55px}
+
+/* run view */
+.run{display:grid;grid-template-columns:1fr 425px;grid-template-rows:minmax(0,1fr);gap:28px;height:100%}
+.rl{display:flex;flex-direction:column;min-width:0;min-height:0}
+.rtitle{font-size:38px;color:var(--r4)}
+.cdbox{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.cd{font-size:268px;line-height:.86;letter-spacing:-2px}
+.cd.stale{opacity:.45}
+.cdcap{font-size:32px;color:var(--r4);margin-top:5px}
+.pr1{font-size:38px;font-weight:600}
+.pr2{font-size:55px;font-weight:700;line-height:1.05;min-height:58px}
+.runbtns{display:flex;gap:18px;margin-top:15px}
+.runbtns .go{height:95px;font-size:58px;flex:1}
+.runbtns .tog2{flex:1;height:95px;font-size:55px;font-weight:700;border:2px solid var(--r4);border-radius:15px}
+.rr{min-width:0}
+.mstrips{display:flex;gap:8px;margin-bottom:12px}
+.mstrip{flex:1;height:118px;border:2px solid var(--r4);border-radius:8px;display:flex;align-items:flex-start;justify-content:center;font-size:32px;padding-top:5px}
+.mstrip.cov{background:transparent;border-style:dashed;border-color:var(--r2);color:var(--r3)}
+.mstrip.lit{background:rgba(255,0,0,.32)}
+.steps{margin-bottom:10px}
+.stpl{display:flex;justify-content:space-between;font-size:30px;padding:4px 10px;border-bottom:1px solid var(--r1)}
+.stpl.done{color:var(--r3);text-decoration:line-through}
+.stpl.cur{background:var(--r5);color:#000}
+.cues{border:2px solid var(--r3);border-radius:10px;padding:8px 12px;margin-top:8px}
+.cue{display:flex;justify-content:space-between;font-size:30px;padding:2px 0}
+.cue.hold{color:#000;background:var(--r5);margin:0 -6px;padding:2px 8px;border-radius:5px}
+
+/* overlay keypad */
+#overlay{position:absolute;inset:0;z-index:20}
+#overlay:empty{display:none}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center}
+.kp{width:475px;border:2px solid var(--r4);border-radius:18px;background:#000;padding:20px}
+.kpd{border:2px solid var(--r3);border-radius:10px;text-align:right;padding:8px 18px;margin-bottom:15px;font-size:80px;height:105px}
+.kpg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kpg button{height:80px;font-size:48px;font-weight:600;border:2px solid var(--r4);border-radius:10px}
+.kpg .ok{background:var(--r5);color:#000}
+
+
+/* ---- tablet layout: 16:10 canvas, flex column app ---- */
+#screen{width:1280px;height:800px}
+#app{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:column;transition:filter .35s}
+.bars #app{top:36px;bottom:30px}
+#segbar{position:relative;left:auto;right:auto;top:auto;flex:none;height:18px;padding:4px 4px 0}
+#status{position:relative;left:auto;right:auto;top:auto;flex:none;height:54px;padding:0 20px;font-size:26px}
+#main{position:relative;left:auto;right:auto;top:auto;flex:1;min-height:0;height:auto;padding:20px 32px}
+#nav{position:relative;left:auto;right:auto;top:auto;flex:none;height:80px}
+.banner{height:44px;padding:6px 32px;padding-right:250px;font-size:27px;line-height:1.25}
+.banner+div{margin-top:46px;height:calc(100% - 46px)}
+.bbtn{position:absolute;right:16px;top:5px;height:34px;padding:0 24px;border:3px solid #000;border-radius:8px;font-size:26px;font-weight:700;color:#000;background:transparent;line-height:1}
+#overlay{z-index:50}
+#sysTop{position:absolute;left:0;right:0;top:0;height:36px;z-index:30;background:#0e0e10;color:#e9e9ea;font:500 20px/36px 'Barlow',system-ui,sans-serif;padding:0 22px;display:none;justify-content:space-between}
+.bars #sysTop{display:flex}
+#sysBot{position:absolute;left:0;right:0;bottom:0;height:30px;z-index:30;background:#0e0e10;display:none;align-items:center;justify-content:center}
+.bars #sysBot{display:flex}
+#sysBot i{width:190px;height:7px;border-radius:4px;background:#e9e9ea}
+#notif{position:absolute;left:50%;top:-160px;transform:translateX(-50%);width:700px;z-index:60;background:#f3f3f4;color:#111;border-radius:24px;padding:16px 24px;font:500 24px/1.3 'Barlow',system-ui,sans-serif;transition:top .35s;box-shadow:0 8px 40px rgba(255,255,255,.45)}
+#notif.show{top:46px}
+#notif b{display:block;font-size:20px;color:#555;font-weight:600}
+#leak{position:absolute;left:0;top:0;right:0;bottom:0;z-index:25;pointer-events:none;mix-blend-mode:screen;background:radial-gradient(ellipse at 50% 45%,rgba(96,104,116,.75),rgba(58,64,74,.75));opacity:0;transition:opacity .35s}
+.chooser{width:560px;border-radius:26px;background:#2b2c2f;color:#f1f1f2;padding:26px 28px;font-family:'Barlow',system-ui,sans-serif}
+.chooser h3{margin:0 0 4px;font:600 28px/1.2 'Barlow',system-ui,sans-serif}
+.chooser p{margin:0 0 16px;font-size:20px;color:#b9bbc0}
+.chooser .dev{display:flex;justify-content:space-between;align-items:center;background:#3a3b3f;border-radius:16px;padding:16px 20px;font-size:24px;margin-bottom:14px}
+.chooser button{font:600 22px/1 'Barlow',system-ui,sans-serif;border:0;border-radius:22px;padding:12px 24px;background:#a8c7fa;color:#062e6f;cursor:pointer}
+.chooser button.plain{background:transparent;color:#a8c7fa}
+.chooser .foot{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
+.chooser small{display:block;margin-top:14px;font-size:17px;color:#8f9197}
+.bezel::before{content:"";position:absolute;left:50%;top:7px;width:9px;height:9px;margin-left:-4px;border-radius:50%;background:#0a0b0d;box-shadow:inset 0 0 0 2px #23262c}
+.time .lbl{font-size:26px;margin-bottom:6px}
+.time .baserow{gap:16px;margin-bottom:14px}
+.time .sq{width:96px;height:96px;font-size:70px}
+.time .basev{height:96px}
+.time .basev .num{font-size:96px}
+.time .row{margin-bottom:14px}
+.time .chip{height:68px;font-size:36px}
+.time .tr .chip{height:62px;font-size:29px}
+.time .big{height:130px;font-size:84px}
+.time .big small{font-size:28px}
+.time .tr{gap:12px}
+.time .readout{height:190px}
+.time .readout .num{font-size:100px}
+.time .go{height:112px;font-size:70px}
+.time .tog{height:64px;font-size:30px}
+.time .bright{height:48px}
+.tbl>div{padding:6px 12px}
+.strips .strip{height:190px}
+.stripwrap .go{height:120px}
+.stripwrap .chip{height:70px}
+.list{height:390px}
+.loglist{height:420px}
+.srow{min-height:82px;font-size:31px}
+.srow small{font-size:23px}
+.setv{gap:10px 52px}
+.scv .cap{font-size:32px}
+.scv input,.scv select{font-size:30px;padding:8px 12px}
+.szrow{margin-bottom:24px}
+.scres{padding:26px 32px}
+.scres .num{font-size:100px}
+.checks{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px 28px}
+.checks li{border-bottom:1px solid var(--border);padding:8px 0}
+.checks label{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:16px}
+.checks input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
+.checks small{display:block;color:var(--muted);font-size:14px}
+.checks .simtag{display:inline-block;font:600 12px/1 'Barlow',sans-serif;border:1px solid var(--border);border-radius:4px;padding:2px 5px;margin-left:6px;color:var(--muted)}
+.cprog{margin-top:10px;font:600 17px/1.2 'Barlow Condensed',sans-serif}
+.cprog.ready{color:var(--good)}
+.d-Tablet{color:#8a5cd0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .d-Tablet{color:#c0a0ff}}
+
+/* ---------- page furniture below the device ---------- */
+.rig{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-top:16px}
+.rig .wide{grid-column:1 / -1}
+.relay{display:grid;grid-template-columns:auto 1fr;gap:12px 22px;align-items:start}
+.lamps{display:flex;flex-direction:column;gap:10px}
+.lamp{display:flex;align-items:center;gap:10px;font-size:15px}
+.lamp i{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:var(--field);flex:none;transition:box-shadow .08s,background .08s}
+.lamp.on i{background:#ffe08a;border-color:#ffe08a;box-shadow:0 0 16px 4px rgba(255,214,110,.75)}
+.lamp.red.on i{background:#ff2a2a;border-color:#ff2a2a;box-shadow:0 0 16px 4px rgba(255,30,30,.7)}
+.lamp.buzz.on i{background:var(--good);border-color:var(--good);box-shadow:0 0 12px 3px var(--good)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:0;font-size:15px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-variant-numeric:tabular-nums}
+.pedal{grid-column:1 / -1;position:relative;overflow:hidden;font:600 17px/1.2 'Barlow Condensed',sans-serif;padding:14px 16px;border-radius:10px;border:1px solid var(--border);background:var(--field);color:var(--text);cursor:pointer;text-align:left;touch-action:none;user-select:none}
+.pedal span{display:block;font:400 14px/1.3 'Barlow',sans-serif;color:var(--muted)}
+.pedal i{position:absolute;left:0;bottom:0;height:4px;width:0;background:var(--accent)}
+.pedal.down{background:var(--border)}
+.ctl{display:flex;flex-direction:column;gap:12px}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:16px}
+.switch input{width:20px;height:20px;accent-color:var(--accent)}
+.seg2{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.seg2 button{font:600 15px/1 'Barlow Condensed',sans-serif;padding:8px 14px;border:0;border-right:1px solid var(--border);background:var(--field);color:var(--text);cursor:pointer}
+.seg2 button:last-child{border-right:0}
+.seg2 button[aria-pressed="true"]{background:var(--text);color:var(--bg)}
+.small-btn{font:600 15px/1 'Barlow Condensed',sans-serif;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--field);color:var(--text);cursor:pointer;align-self:flex-start}
+#msgLog{list-style:none;margin:0;padding:0;max-height:230px;overflow-y:auto;font:13px/1.45 ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+#msgLog li{display:grid;grid-template-columns:44px 84px 1fr;gap:8px;border-bottom:1px solid var(--border);padding:2px 0}
+#msgLog .t{color:var(--muted)}
+.d-UI{color:#2f6fd0}.d-Relay{color:var(--good)}.d-Knob{color:#b2650a}.d-Link{color:var(--accent)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .d-UI{color:#7fb0ff}:root:not([data-theme="light"]) .d-Knob{color:#f0a24a}}
+.try summary{cursor:pointer;font:600 19px/1.2 'Barlow Condensed',sans-serif}
+.try ol{margin:10px 0 0;padding-left:20px}
+.try li{margin:4px 0}
+
+/* knob view */
+.knobview{display:grid;grid-template-columns:minmax(0,560px) 1fr;gap:18px;align-items:start}
+.knobfit{position:relative;width:100%;max-width:560px;margin:0 auto}
+.knobouter{position:absolute;left:0;top:0;width:560px;height:560px;transform-origin:0 0}
+.kring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#8b9098,#d9dce1,#7a7f88,#cfd3d9,#8b9098,#d9dce1,#7a7f88,#cfd3d9,#8b9098);box-shadow:0 10px 30px rgba(0,0,0,.4),inset 0 0 0 5px rgba(0,0,0,.25);cursor:grab;touch-action:none}
+.kring:active{cursor:grabbing}
+.knotch{position:absolute;left:50%;top:14px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#1b1e23;transform-origin:50% 266px}
+.disc{position:absolute;left:47px;top:47px;width:466px;height:466px;border-radius:50%;background:#000;color:var(--r5);font-family:'Barlow Condensed','Arial Narrow','Liberation Sans Narrow','DejaVu Sans Condensed',sans-serif;overflow:hidden;box-shadow:0 0 0 6px #1b1e23;text-align:center;user-select:none}
+.disc *{box-sizing:border-box}
+.dsvg{position:absolute;inset:0}
+.dsvg .trk{fill:none;stroke:var(--r1);stroke-width:10}
+.dsvg .prg{fill:none;stroke:var(--r5);stroke-width:10;stroke-linecap:round}
+.kmode{position:absolute;left:0;right:0;top:78px;font-size:30px;color:var(--r4)}
+.kval{position:absolute;left:0;right:0;top:118px;font-size:128px}
+.ksub{position:absolute;left:0;right:0;top:250px;font-size:44px;font-weight:600}
+.kdots{position:absolute;left:0;right:0;top:316px;display:flex;justify-content:center;gap:12px}
+.kdots i{width:12px;height:12px;border-radius:50%;border:2px solid var(--r3)}
+.kdots i.on{background:var(--r5);border-color:var(--r5)}
+.kgo{position:absolute;left:123px;top:352px;width:220px;height:62px;border:2px solid var(--r5);border-radius:31px;background:var(--r5);color:#000;font:700 36px/1 'Barlow Condensed',sans-serif;cursor:pointer}
+.kgo:disabled{opacity:.3;cursor:not-allowed}
+.kover{position:absolute;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:600;color:var(--r4)}
+.kover[hidden]{display:none}
+.kbtns{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.kbtns button{font:600 16px/1 'Barlow Condensed',sans-serif;padding:11px 16px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer}
+.mirror .num2{font:700 46px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}
+.mirror .mrow{display:flex;gap:26px;margin:8px 0}
+.chipx{display:inline-block;font:600 15px/1 'Barlow Condensed',sans-serif;padding:5px 10px;border-radius:6px;border:1px solid var(--border)}
+.side{display:flex;flex-direction:column;gap:14px}
+.side ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:15px}
+@media (max-width:860px){ .rig,.knobview{grid-template-columns:1fr} .relay{grid-template-columns:1fr} }
+@media (prefers-reduced-motion: reduce){ #screen{transition:none} .lamp i{transition:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>F-stop timer simulator</h1>
+    <p class="sub">The stage 1 main screen on a 16:10 tablet (Samsung Galaxy Tab S9 FE, laid out on a 1280×800 canvas, red on black) talking to a simulated relay unit, plus the stage 2 round knob display. Nothing here touches real hardware.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Simulator views">
+    <button role="tab" id="tabMain" aria-selected="true">Main screen and relay</button>
+    <button role="tab" id="tabKnob" aria-selected="false">Round knob display (stage 2)</button>
+  </div>
+
+  <section id="view-main" aria-label="Main screen">
+    <div class="bezel"><div class="stagebox" id="stagebox">
+      <div id="screen">
+        <div id="app">
+          <div id="segbar"></div>
+          <div id="status"></div>
+          <div id="main"></div>
+          <div id="nav"></div>
+        </div>
+        <div id="leak"></div>
+        <div id="sysTop"><span id="sysTime">21:47</span><span>Bluetooth &nbsp; Wi-Fi &nbsp; 84%</span></div>
+        <div id="sysBot"><i></i></div>
+        <div id="notif"><b>Messages</b>Anna: Are you free tonight? Bring the good paper.</div>
+        <div id="overlay"></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section id="view-knob" hidden aria-label="Round knob display">
+    <div class="knobview">
+      <div>
+        <div class="knobfit" id="knobFit">
+          <div class="knobouter" id="knobOuter">
+            <div class="kring" id="kRing"><i class="knotch" id="kNotch"></i></div>
+            <div class="disc">
+              <svg class="dsvg" viewBox="0 0 466 466" aria-hidden="true"><circle class="trk" cx="233" cy="233" r="214"/><circle class="prg" id="kPrg" cx="233" cy="233" r="214" transform="rotate(-90 233 233)" stroke-dasharray="1344.6" stroke-dashoffset="1344.6"/></svg>
+              <div class="kmode" id="kMode"></div>
+              <div class="kval num" id="kVal"></div>
+              <div class="ksub" id="kSub"></div>
+              <div class="kdots" id="kDots"><i></i><i></i><i></i></div>
+              <button class="kgo" id="kGo">Start</button>
+              <div class="kover" id="kOver" hidden>Not connected</div>
+            </div>
+          </div>
+        </div>
+        <div class="kbtns">
+          <button id="kL">Turn left</button><button id="kP">Press knob</button><button id="kR">Turn right</button>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card mirror">
+          <h2>Main screen, live</h2>
+          <p class="hint">What the main screen currently shows, so you can see the knob's changes land.</p>
+          <div><span class="chipx" id="mirState">Idle</span></div>
+          <div class="mrow"><div><div class="hint" style="margin:0">Stops</div><div class="num2" id="mirStops">0</div></div><div><div class="hint" style="margin:0">Time</div><div class="num2" id="mirTime">10.0 s</div></div></div>
+          <div class="hint" id="mirMsg" style="margin:0"></div>
+        </div>
+        <div class="card">
+          <h2>Proposed knob behaviour</h2>
+          <ul>
+            <li>Turn: change the selected value by one step size per click.</li>
+            <li>Press: choose what the knob changes: stops, base time, then step size.</li>
+            <li>Touch: the Start / Pause / Resume button at the bottom.</li>
+            <li>Drag the ring, use the mouse wheel, or the left and right arrow keys to turn it.</li>
+            <li>While an exposure runs, the display shows the countdown and a progress ring, and turning is ignored.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rig" aria-label="Simulated hardware">
+    <div class="card">
+      <h2>Relay unit (ESP32-S3, simulated)</h2>
+      <p class="hint">Times each exposure itself and switches the enlarger and safelight relays. The foot pedal plugs in here.</p>
+      <div class="relay">
+        <div class="lamps">
+          <div class="lamp" id="lampEnl"><i></i><span>Enlarger lamp</span></div>
+          <div class="lamp red" id="lampSafe"><i></i><span>Safelight</span></div>
+          <div class="lamp buzz" id="buzz"><i></i><span>Buzzer</span></div>
+        </div>
+        <dl class="kv">
+          <dt>State</dt><dd id="rState">Idle</dd>
+          <dt>Armed plan</dt><dd id="rPlan">none</dd>
+          <dt>Step</dt><dd id="rStep">none</dd>
+          <dt>Relay clock</dt><dd id="rRem">none</dd>
+          <dt>Latency offset</dt><dd id="rLat">0 ms</dd>
+          <dt>Focus timeout</dt><dd id="rFocus">none</dd>
+          <dt>Screen heartbeat</dt><dd id="rHb">waiting</dd>
+        </dl>
+        <button class="pedal" id="pedal"><i id="pedalBar"></i>Foot pedal<span>Click to press. Hold for one second for a long press. Press starts the armed exposure, pauses and resumes it; a long press cancels.</span></button>
+      </div>
+    </div>
+    <div class="card ctl">
+      <div>
+        <h2>Simulation controls</h2>
+        <p class="hint" style="margin-bottom:0">Cut the link during an exposure to see the relay carry on by itself.</p>
+      </div>
+      <label class="switch"><input type="checkbox" id="swLink" checked> Bluetooth link between screen and relay</label>
+      <label class="switch"><input type="checkbox" id="swKnob" checked> Round knob display connected</label>
+      <div>
+        <div class="hint" style="margin:0 0 6px">Simulation speed (times run faster, buzzer and countdown follow)</div>
+        <div class="seg2" id="speedSeg"><button data-speed="1" aria-pressed="true">1×</button><button data-speed="2" aria-pressed="false">2×</button><button data-speed="5" aria-pressed="false">5×</button><button data-speed="10" aria-pressed="false">10×</button></div>
+      </div>
+      <div>
+        <div class="hint" style="margin:0 0 6px">App type on the tablet</div>
+        <div class="seg2" id="modeSeg"><button data-mode="web" aria-pressed="true">Web app</button><button data-mode="wrapped" aria-pressed="false">Wrapped app</button></div>
+        <p class="hint" id="modeHint" style="margin:8px 0 0"></p>
+      </div>
+      <button class="small-btn" id="btnReset">Reset saved settings and log</button>
+    </div>
+    <div class="card wide" id="tabletCard">
+      <h2>Tablet setup (Galaxy Tab S9 FE)</h2>
+      <p class="hint">Tick items as you set up the real tablet. The first three also change the simulated screen above, so you can see what goes wrong without them.</p>
+      <ul class="checks" id="checks"></ul>
+      <div class="cprog" id="cprog"></div>
+    </div>
+    <div class="card wide">
+      <h2>Messages between the units</h2>
+      <p class="hint">Status updates arrive about ten times a second and are not listed.</p>
+      <ul id="msgLog"></ul>
+    </div>
+    <details class="card wide try">
+      <summary>Things to try</summary>
+      <ol>
+        <li>On the Time tab, press a start-time preset, change the step size, then press Start. Set the speed to 5× to watch a long exposure quickly.</li>
+        <li>On Strip test, run the test and watch the enlarger switch off between steps while the next strip to cover is shown. Tap a strip afterwards and choose Use selected strip.</li>
+        <li>On Recipe, add a burn and a dodge and run it. Dodge hold times count down during the main exposure.</li>
+        <li>Start an exposure and switch the Bluetooth link off. The relay finishes the exposure and the screen catches up when the link returns.</li>
+        <li>Switch focus light on, then cut the link. The relay switches the enlarger off after the heartbeat is lost.</li>
+        <li>Use the foot pedal with the screen on a different tab. It still starts the last armed exposure.</li>
+        <li>Open the round knob view and turn the knob. Press it to change what it adjusts.</li>
+        <li>In Tablet setup, switch off the red film, fullscreen or Do Not Disturb and see what the screen would look like. Send a test notification with Do Not Disturb off.</li>
+        <li>Cut the Bluetooth link and restore it. With Web app you must tap Reconnect and use the bright pairing dialog; with Wrapped app it reconnects by itself.</li>
+        <li>Lower the brightness in focus mode with the red film off. With Wrapped app the glow dims; with Web app it does not.</li>
+      </ol>
+    </details>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= utilities ================= */
+const perf = () => performance.now();
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function fmtStops(n) {              // n = twelfths of a stop
+  if (n === 0) return '0';
+  const a = Math.abs(n), w = Math.floor(a / 12), r = a % 12;
+  let f = '';
+  if (r) { const g = gcd(r, 12); f = (r / g) + '/' + (12 / g); }
+  return (n > 0 ? '+' : '\u2212') + (w ? w : '') + (w && f ? ' ' : '') + f;
+}
+
+/* ================= constants ================= */
+const IV = [{ n: 6, l: '1/2' }, { n: 4, l: '1/3' }, { n: 3, l: '1/4' }, { n: 2, l: '1/6' }, { n: 1, l: '1/12' }];
+const PRESETS = [5, 10, 15, 20, 25];
+const NAMES = { IDLE: 'Idle', ARMED: 'Armed', FOCUS: 'Focus', EXPOSING: 'Exposing', GAP: 'Next step', PAUSED: 'Paused', FAULT: 'Fault' };
+const RUNNING = ['EXPOSING', 'GAP', 'PAUSED'];
+const running = s => RUNNING.includes(s);
+const TABS = [['time', 'Time'], ['strip', 'Strip test'], ['recipe', 'Recipe'], ['log', 'Log'], ['scale', 'Scale'], ['set', 'Settings']];
+const SETDEF = {
+  gap: { min: 1, max: 30, step: 1, fmt: v => v + ' s' },
+  lat: { min: 0, max: 500, step: 5, fmt: v => v + ' ms' },
+  focusMin: { opts: [0, 1, 2, 5, 10, 15], fmt: v => (v ? v + ' min' : 'Off') },
+  vol: { min: 0, max: 100, step: 10, fmt: v => v + '%' },
+  dim: { min: 5, max: 50, step: 5, fmt: v => v + '%' },
+  recipThr: { min: 5, max: 120, step: 5, fmt: v => v + ' s' },
+  recipK: { min: 1, max: 1.3, step: 0.02, fmt: v => v.toFixed(2) }
+};
+
+/* ================= saved state (the device remembers its settings) ================= */
+const KEY = 'fstop-tablet-v1';
+const defaults = () => ({
+  baseT: 100, iv: 1, off: 0, tab: 'time', rid: 0,
+  set: { gap: 5, lat: 0, focusMin: 5, vol: 60, mute: false, dim: 30, bright: 100, safeAuto: false, recipOn: false, recipThr: 20, recipK: 1.1 },
+  recipe: [], saved: [], log: [],
+  scale: { aw: 8, ah: 10, bw: 11, bh: 14 },
+  tablet: { filter: true, fullscreen: true, dnd: true, checks: { lights: false, rotate: false, awake: false, paper: false, case: false } }
+});
+let A = defaults();
+try {
+  const j = JSON.parse(localStorage.getItem(KEY) || 'null');
+  if (j) A = Object.assign(defaults(), j, { set: Object.assign(defaults().set, j.set || {}), scale: Object.assign(defaults().scale, j.scale || {}), tablet: Object.assign(defaults().tablet, j.tablet || {}, { checks: Object.assign(defaults().tablet.checks, (j.tablet || {}).checks || {}) }) });
+} catch (e) { /* storage unavailable: run without it */ }
+if (!TABS.some(t => t[0] === A.tab)) A.tab = 'time';
+function save() { try { localStorage.setItem(KEY, JSON.stringify(A)); } catch (e) { /* ignore */ } }
+
+/* ================= simulation state ================= */
+const sim = { speed: 1, linkUp: true, knobOn: true, appMode: 'web' };
+const U = { keypad: null, toast: null, plan: null, runPlan: null, armedSig: '', linkOk: false, rxAt: 0, view: 'main', knobMode: 0, knobAngle: 0, selStrip: null, segN: 0, session: false, everConnected: false, chooser: false };
+const linkOpen = () => sim.linkUp && U.session;
+let R = { state: 'IDLE', idx: 0, steps: 0, rem: 0, total: 0, lamp: false, safe: true, safeUser: true, focusRem: null, kind: null, speed: 1, fault: '', pf: null, rxAt: 0 };
+
+/* ================= message log ================= */
+const MLOG = [];
+const T0 = perf();
+function mlog(dir, text) {
+  MLOG.unshift({ t: (perf() - T0) / 1000, dir, text });
+  if (MLOG.length > 80) MLOG.pop();
+  const el = $('#msgLog');
+  el.innerHTML = MLOG.map(m => '<li><span class="t">' + m.t.toFixed(1) + '</span><span class="d-' + m.dir.split('\u2192')[0] + '">' + esc(m.dir) + '</span><span>' + esc(m.text) + '</span></li>').join('');
+}
+function describe(m) {
+  switch (m.type) {
+    case 'ARM': return 'ARM ' + m.plan.kind + ', ' + m.plan.steps.length + ' step(s), gap ' + (m.plan.gapMs / 1000).toFixed(1) + ' s';
+    case 'CONFIG': return 'CONFIG offset ' + m.lat + ' ms, focus timeout ' + (m.focusMs ? m.focusMs / 60000 + ' min' : 'off') + ', volume ' + (m.mute ? 'muted' : m.vol + '%');
+    case 'FOCUS': return 'FOCUS ' + (m.on ? 'on' : 'off');
+    case 'SAFELIGHT': return 'SAFELIGHT ' + (m.on ? 'on' : 'off');
+    default: return m.type;
+  }
+}
+
+/* ================= the Bluetooth link ================= */
+const Link = {
+  last: { toRelay: 0, toUI: 0 },
+  send(dir, msg, quiet) {
+    if (!linkOpen()) { if (!quiet) mlog('Link', 'dropped ' + msg.type + ' (not connected)'); return false; }
+    const now = perf();
+    const t = Math.max(now + 25 + Math.random() * 40, this.last[dir] + 1);   // keeps messages in order
+    this.last[dir] = t;
+    setTimeout(() => { if (!linkOpen()) return; if (dir === 'toRelay') Relay.onMsg(msg); else onRelayMsg(msg); }, t - now);
+    return true;
+  }
+};
+function toRelay(type, p) {
+  const m = Object.assign({ type }, p || {});
+  if (type !== 'PING') mlog('UI\u2192Relay', describe(m));
+  Link.send('toRelay', m, type === 'PING');
+}
+
+/* ================= audio (the relay's buzzer) ================= */
+let actx = null, lastTickAudio = 0;
+function ensureAudio() {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) { /* no audio */ }
+}
+document.addEventListener('pointerdown', ensureAudio);
+document.addEventListener('keydown', ensureAudio);
+function playTone(kind, vol) {
+  if (!actx || actx.state !== 'running') return;
+  if (kind === 'tick') { const t = perf(); if (t - lastTickAudio < 160) return; lastTickAudio = t; }
+  const seq = { tick: [[1250, .05]], step: [[880, .13], [1320, .13]], done: [[880, .12], [1100, .12], [1480, .3]] }[kind];
+  let at = actx.currentTime + 0.01;
+  const gain = Math.pow(vol / 100, 2) * 0.2;
+  seq.forEach(([f, d]) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'square'; o.frequency.value = f;
+    g.gain.setValueAtTime(gain, at); g.gain.exponentialRampToValueAtTime(0.0001, at + d);
+    o.connect(g); g.connect(actx.destination); o.start(at); o.stop(at + d + 0.02);
+    at += d;
+  });
+}
+
+/* ================= relay unit: the timing authority ================= */
+const Relay = {
+  state: 'IDLE', plan: null, idx: 0, rem: 0, total: 0, lamp: false, safeUser: true, safe: true, pf: null,
+  cfg: { lat: 0, focusMs: 300000, vol: 60, mute: false, safeAuto: false },
+  focusEl: 0, lastRx: 0, heard: false, hbOk: true, pending: [], fault: '', lastTickSec: 0, buzzAt: -1e9, last: perf(),
+
+  log(t) { mlog('Relay', t); },
+  emit(ev, extra) {
+    const m = Object.assign({ type: 'EVENT', ev }, extra || {});
+    const ok = Link.send('toUI', m, true);
+    if (!ok && (ev === 'done' || ev === 'fault' || ev === 'focus_timeout')) this.pending.push(m);
+  },
+  beep(kind) {
+    this.buzzAt = perf();
+    if (this.cfg.mute || this.cfg.vol <= 0) return;
+    playTone(kind, this.cfg.vol);
+  },
+  onMsg(m) {
+    this.lastRx = perf(); this.heard = true;
+    if (!this.hbOk) {
+      this.hbOk = true; this.log('heartbeat restored');
+      this.pending.splice(0).forEach(p => Link.send('toUI', p, true));
+    }
+    switch (m.type) {
+      case 'PING': break;
+      case 'ARM':
+        if (running(this.state)) { this.log('ARM ignored: exposure in progress'); break; }
+        this.plan = m.plan;
+        if (this.state === 'IDLE' || this.state === 'FAULT') { this.state = 'ARMED'; this.fault = ''; }
+        this.log('armed ' + this.plan.kind + ', ' + this.plan.steps.length + ' step(s)');
+        break;
+      case 'START': this.start(); break;
+      case 'PAUSE': this.pause(); break;
+      case 'RESUME': this.resume(); break;
+      case 'CANCEL': this.cancel('screen'); break;
+      case 'FOCUS':
+        if (m.on) {
+          if (['IDLE', 'ARMED', 'FAULT'].includes(this.state)) { this.state = 'FOCUS'; this.lamp = true; this.focusEl = 0; this.fault = ''; this.log('focus light on'); }
+        } else if (this.state === 'FOCUS') { this.lamp = false; this.state = this.plan ? 'ARMED' : 'IDLE'; this.log('focus light off'); }
+        break;
+      case 'SAFELIGHT': this.safeUser = !!m.on; this.log('safelight ' + (m.on ? 'on' : 'off')); break;
+      case 'CONFIG': {
+        const volChanged = m.vol !== this.cfg.vol;
+        this.cfg = { lat: m.lat, focusMs: m.focusMs, vol: m.vol, mute: m.mute, safeAuto: m.safeAuto };
+        this.log('config stored');
+        if (volChanged) this.beep('tick');
+        break;
+      }
+    }
+  },
+  start() {
+    if (!this.plan || !['ARMED', 'FOCUS'].includes(this.state)) { this.log('START ignored (' + NAMES[this.state].toLowerCase() + ')'); return; }
+    this.lamp = false; this.log('start ' + this.plan.kind); this.begin(0);
+  },
+  begin(i) {
+    this.idx = i; const s = this.plan.steps[i];
+    this.total = s.ms + this.cfg.lat; this.rem = this.total;
+    this.state = 'EXPOSING'; this.lamp = true; this.lastTickSec = 0;
+    this.log('step ' + (i + 1) + '/' + this.plan.steps.length + ': lamp on for ' + (this.total / 1000).toFixed(2) + ' s' + (this.cfg.lat ? ' (includes ' + this.cfg.lat + ' ms offset)' : ''));
+  },
+  step(d) {
+    switch (this.state) {
+      case 'EXPOSING': {
+        this.rem -= d;
+        const sec = Math.floor((this.total - this.rem) / 1000);
+        if (sec > this.lastTickSec && this.rem > 0) { this.lastTickSec = sec; this.beep('tick'); }
+        if (this.rem <= 0) this.endStep();
+        break;
+      }
+      case 'GAP': this.rem -= d; if (this.rem <= 0) this.begin(this.idx + 1); break;
+      case 'FOCUS':
+        this.focusEl += d;
+        if (this.cfg.focusMs && this.focusEl >= this.cfg.focusMs) {
+          this.lamp = false; this.state = this.plan ? 'ARMED' : 'IDLE';
+          this.log('focus timeout: lamp off'); this.emit('focus_timeout');
+        }
+        break;
+    }
+  },
+  endStep() {
+    this.lamp = false; this.rem = 0;
+    const n = this.plan.steps.length;
+    if (this.idx < n - 1) {
+      this.beep('step'); this.emit('step_done', { idx: this.idx });
+      const g = this.plan.gapMs || 0;
+      if (g > 0) { this.state = 'GAP'; this.total = g; this.rem = g; this.log('lamp off, gap of ' + (g / 1000).toFixed(1) + ' s'); }
+      else this.begin(this.idx + 1);
+    } else {
+      this.beep('done'); this.state = 'ARMED'; this.log('exposure complete');
+      this.emit('done', { total: this.plan.steps.reduce((a, s) => a + s.ms + this.cfg.lat, 0) });
+    }
+  },
+  pause() { if (this.state === 'EXPOSING' || this.state === 'GAP') { this.pf = this.state; this.state = 'PAUSED'; this.lamp = false; this.log('paused: lamp off'); } },
+  resume() { if (this.state === 'PAUSED') { this.state = this.pf; this.lamp = this.state === 'EXPOSING'; this.log('resumed'); } },
+  cancel(src) {
+    if (running(this.state)) { this.lamp = false; this.state = 'ARMED'; this.log('cancelled (' + src + ')'); this.emit('cancelled'); }
+    else if (this.state === 'FAULT') { this.fault = ''; this.state = this.plan ? 'ARMED' : 'IDLE'; }
+  },
+  pedal(long) {
+    this.log('foot pedal ' + (long ? 'long press' : 'press'));
+    this.emit('pedal', { long });
+    if (long) { if (running(this.state)) this.cancel('pedal'); return; }
+    if (this.state === 'ARMED' || this.state === 'FOCUS') this.start();
+    else if (this.state === 'EXPOSING' || this.state === 'GAP') this.pause();
+    else if (this.state === 'PAUSED') this.resume();
+  },
+  tick() {
+    const now = perf();
+    let dt = Math.min(now - this.last, 250) * sim.speed; this.last = now;
+    while (dt > 0) { const d = Math.min(dt, 10); this.step(d); dt -= d; }
+    if (this.heard && this.hbOk && now - this.lastRx > 1500) {
+      this.hbOk = false; this.log('screen heartbeat lost');
+      if (this.state === 'FOCUS') {
+        this.lamp = false; this.state = 'FAULT'; this.fault = 'Link lost in focus mode: enlarger switched off';
+        this.log('fault: lamp off'); this.emit('fault', { text: this.fault });
+      }
+    }
+    this.safe = this.safeUser && !(this.cfg.safeAuto && this.state === 'EXPOSING');
+  },
+  sendStatus() {
+    Link.send('toUI', {
+      type: 'STATUS', state: this.state, idx: this.idx, steps: this.plan ? this.plan.steps.length : 0,
+      rem: this.rem, total: this.total, lamp: this.lamp, safe: this.safe, safeUser: this.safeUser, pf: this.pf,
+      focusRem: this.state === 'FOCUS' && this.cfg.focusMs ? this.cfg.focusMs - this.focusEl : null,
+      kind: this.plan ? this.plan.kind : null, speed: sim.speed, fault: this.fault
+    }, true);
+  }
+};
+
+/* ================= exposure maths ================= */
+const nomTime = (base, n) => base * Math.pow(2, n / 12);
+function Rcp(t) {                                   // reciprocity compensation (placeholder power law)
+  if (!A.set.recipOn) return t;
+  const T = A.set.recipThr;
+  return t <= T ? t : T * Math.pow(t / T, A.set.recipK);
+}
+const actTime = (base, n) => Rcp(nomTime(base, n));
+const mainNom = () => nomTime(A.baseT / 10, A.off);
+const mainAct = () => Rcp(mainNom());
+const ivN = () => IV[A.iv].n;
+
+function buildPlan(kind) {
+  const b = A.baseT / 10, n = ivN(), ms = x => Math.max(0, Math.round(x * 1000)), gapMs = A.set.gap * 1000;
+  if (kind === 'strip') {
+    const steps = []; let prev = 0;
+    for (let k = 0; k < 6; k++) {
+      const tot = actTime(b, k * n);
+      steps.push({ ms: ms(tot - prev), label: k ? 'Cover strip ' + (7 - k) : 'Expose the whole sheet', k, reach: tot, stops: k * n });
+      prev = tot;
+    }
+    return { kind, steps, gapMs, meta: 'Strip test, base ' + b.toFixed(1) + ' s, ' + IV[A.iv].l + ' stop steps' };
+  }
+  const m = nomTime(b, A.off), main = Rcp(m);
+  if (kind === 'recipe') {
+    const steps = [{ ms: ms(main), label: 'Main exposure', stops: A.off, cues: [] }];
+    let bi = 0, di = 0;
+    A.recipe.forEach(e => {
+      if (e.type === 'burn') { bi++; steps.push({ ms: ms(Rcp(m * Math.pow(2, e.n / 12)) - main), label: 'Burn ' + bi + ' (' + fmtStops(e.n) + ')', stops: A.off + e.n }); }
+      else { di++; steps[0].cues.push({ label: 'Dodge ' + di + ' (' + fmtStops(-e.n) + ')', holdMs: ms(main - Rcp(m * Math.pow(2, -e.n / 12))) }); }
+    });
+    const bits = A.recipe.map(e => (e.type === 'burn' ? 'burn ' + fmtStops(e.n) : 'dodge ' + fmtStops(-e.n)));
+    return { kind, steps, gapMs, meta: 'Recipe, main ' + main.toFixed(1) + ' s' + (bits.length ? ', ' + bits.join(', ') : '') };
+  }
+  return { kind: 'single', steps: [{ ms: ms(main), label: 'Exposure', stops: A.off }], gapMs: 0, meta: 'Base ' + b.toFixed(1) + ' s, ' + fmtStops(A.off) + ' stop, ' + main.toFixed(1) + ' s' };
+}
+
+/* ================= screen-side logic ================= */
+function armKind() {
+  if (A.tab === 'strip') return 'strip';
+  if (A.tab === 'recipe') return 'recipe';
+  if (A.tab === 'time') return 'single';
+  return U.plan ? U.plan.kind : 'single';
+}
+function syncArm(force) {
+  if (!U.linkOk || running(R.state)) return;
+  const plan = buildPlan(armKind());
+  const sig = JSON.stringify(plan);
+  if (!force && sig === U.armedSig) return;
+  U.armedSig = sig; U.plan = plan;
+  toRelay('ARM', { plan });
+}
+function pushConfig() {
+  const s = A.set;
+  toRelay('CONFIG', { lat: s.lat, focusMs: s.focusMin * 60000, vol: s.vol, mute: s.mute, safeAuto: s.safeAuto });
+}
+function onReconnect() {
+  mlog('UI', 'relay link up: sending settings and the armed plan');
+  pushConfig(); U.armedSig = ''; syncArm(true);
+}
+function onRelayMsg(m) { if (m.type === 'STATUS') onStatus(m); else if (m.type === 'EVENT') onEvent(m); }
+function onStatus(m) {
+  const prev = R;
+  R = Object.assign({}, m, { rxAt: perf() }); U.rxAt = R.rxAt;
+  let changed = false;
+  if (!U.linkOk) { U.linkOk = true; U.everConnected = true; changed = true; onReconnect(); }
+  if (running(R.state) && !running(prev.state)) {
+    U.runPlan = U.plan ? JSON.parse(JSON.stringify(U.plan)) : null;
+    if (U.runPlan && U.runPlan.steps.length !== R.steps) U.runPlan = null;
+  }
+  ['state', 'idx', 'lamp', 'safe', 'safeUser', 'steps', 'fault', 'kind', 'pf'].forEach(k => { if (prev[k] !== R[k]) changed = true; });
+  if (changed) renderAll();
+}
+function onEvent(m) {
+  switch (m.ev) {
+    case 'done': addLog(m.total); toast('Exposure complete. Saved to the log.'); break;
+    case 'cancelled': toast('Cancelled'); break;
+    case 'pedal': toast('Foot pedal ' + (m.long ? 'long press' : 'press')); break;
+    case 'focus_timeout': toast('Focus light switched off (timeout)'); break;
+    case 'fault': toast(m.text, 8000, true); break;
+  }
+}
+function addLog(totalMs) {
+  const p = U.runPlan || U.plan; if (!p) return;
+  A.log.unshift({ id: Date.now() + Math.floor(Math.random() * 1000), ts: Date.now(), kind: p.kind, meta: p.meta, total: totalMs, note: '' });
+  if (A.log.length > 60) A.log.pop();
+  save(); if (A.tab === 'log') renderMainView();
+}
+function toast(text, ms, hot) { U.toast = { text, until: perf() + (ms || 3200), hot: !!hot }; updateToast(); }
+function updateToast() {
+  const el = $('#toast'); if (!el) return;
+  const t = U.toast && perf() < U.toast.until ? U.toast : null;
+  el.textContent = t ? t.text : 'Step size ' + IV[A.iv].l + ' stop, base ' + (A.baseT / 10).toFixed(1) + ' s';
+  el.classList.toggle('hot', !!(t && t.hot));
+}
+function remEst() {
+  if (!running(R.state)) return 0;
+  let r = R.rem;
+  if (U.linkOk && (R.state === 'EXPOSING' || R.state === 'GAP')) r -= (perf() - R.rxAt) * R.speed;
+  return Math.max(0, r);
+}
+
+/* ================= main screen rendering ================= */
+const screen = $('#screen');
+const B = (act, label, cls, extra) => '<button class="btn ' + (cls || '') + '" data-act="' + act + '" ' + (extra || '') + '>' + label + '</button>';
+const chips = (arr, sel, act, fmt) => arr.map((x, i) => B(act, fmt(x, i), 'chip' + (sel(x, i) ? ' on' : ''), 'data-a="' + i + '"')).join('');
+const ivChips = () => IV.map((x, i) => B('iv', x.l, 'chip' + (i === A.iv ? ' on' : ''), 'data-a="' + i + '"')).join('');
+const disAttr = () => (U.linkOk ? '' : 'disabled');
+
+function renderSeg() {
+  const n = running(R.state) ? Math.max(R.steps, 1) : A.tab === 'strip' ? 6 : A.tab === 'recipe' ? 1 + A.recipe.filter(e => e.type === 'burn').length : 1;
+  if (n !== U.segN || !$('#segbar').children.length) {
+    U.segN = n;
+    $('#segbar').innerHTML = Array.from({ length: n }, () => '<div class="seg"><i></i></div>').join('');
+  }
+}
+function renderStatus() {
+  const s = U.linkOk ? R.state : 'NOLINK';
+  const label = s === 'NOLINK' ? 'No link' : NAMES[s];
+  const cls = (s === 'EXPOSING' ? ' exp' : '') + (s === 'FAULT' || s === 'NOLINK' ? ' warn' : '');
+  const ind = (t, on) => '<span class="ind' + (on ? ' on' : '') + '"><i></i>' + t + '</span>';
+  $('#status').innerHTML = '<span class="schip' + cls + '">' + label + '</span><span id="toast"></span>' +
+    ind('Relay', U.linkOk) + ind('Knob', sim.knobOn) + ind('Lamp', U.linkOk && R.lamp) + ind('Safelight', U.linkOk && R.safe);
+  updateToast();
+}
+function renderNav() {
+  const nav = $('#nav');
+  nav.className = running(R.state) ? 'locked' : '';
+  nav.innerHTML = TABS.map(t => '<button class="' + (A.tab === t[0] ? 'on' : '') + '" data-act="tab" data-a="' + t[0] + '">' + t[1] + '</button>').join('');
+}
+function applyBright() {
+  const dim = R.state === 'EXPOSING', f = (dim ? A.set.dim : A.set.bright) / 100;
+  $('#app').style.filter = 'brightness(' + f + ')';
+  screen.classList.toggle('bars', !A.tablet.fullscreen);
+  // Backlight glow shows only without the red film. A wrapped app can lower the real backlight; a web page can only darken its own pixels.
+  $('#leak').style.opacity = A.tablet.filter ? 0 : (sim.appMode === 'wrapped' ? f : 1);
+}
+
+function viewTime() {
+  const b = A.baseT / 10, nom = mainNom(), act = mainAct(), d = disAttr();
+  const corr = A.set.recipOn && Math.abs(act - nom) > 0.05;
+  const foc = R.state === 'FOCUS';
+  return '<div class="time"><div>' +
+    '<div class="lbl">Base time</div><div class="baserow">' + B('base', '\u2212', 'sq', 'data-a="-1" aria-label="Decrease base time"') +
+    '<button class="basev" data-act="keypad" aria-label="Enter base time"><span class="num">' + b.toFixed(1) + '</span><small>s</small></button>' +
+    B('base', '+', 'sq', 'data-a="1" aria-label="Increase base time"') + '</div>' +
+    '<div class="lbl">Start time presets</div><div class="row">' + PRESETS.map(p => B('preset', p, 'chip' + (A.baseT === p * 10 ? ' on' : ''), 'data-a="' + p + '"')).join('') + '</div>' +
+    '<div class="lbl">Step size, in stops per click</div><div class="row">' + ivChips() + '</div>' +
+    '<div class="lbl">Change exposure</div><div class="row">' +
+    B('off', '\u2212<small>' + IV[A.iv].l + ' stop</small>', 'big', 'data-a="-1" aria-label="Less exposure"') +
+    B('off', '+<small>' + IV[A.iv].l + ' stop</small>', 'big', 'data-a="1" aria-label="More exposure"') + '</div>' +
+    '</div><div class="tr">' +
+    '<div class="readout"><div><div class="lbl">Stops</div><div class="num">' + fmtStops(A.off) + '</div></div><div><div class="lbl">Time</div><div class="num">' + act.toFixed(1) + '<small>s</small></div></div></div>' +
+    (corr ? '<div class="note">Reciprocity added: ' + nom.toFixed(1) + ' s before compensation</div>' : '') +
+    '<button class="btn go" data-act="start" ' + d + '>Start</button>' +
+    '<div class="row" style="margin:0">' + B('focus', foc ? 'Focus light off' : 'Focus light on', 'tog' + (foc ? ' on' : ''), d) + B('safe', 'Safelight', 'tog' + (R.safeUser ? ' on' : ''), d) + '</div>' +
+    '<div class="bright"><span class="lbl" style="margin:0">Brightness</span><input type="range" min="10" max="100" value="' + A.set.bright + '" data-in="bright" aria-label="Screen brightness" ' + (foc ? '' : 'disabled') + '><span class="muted" id="focusrem"></span></div>' +
+    '<div class="row" style="margin:0">' + B('off0', 'Reset stops', 'chip') + B('setbase', 'Use as base', 'chip') + '</div>' +
+    '</div></div>';
+}
+
+function stripData() {
+  const b = A.baseT / 10, n = ivN(), tots = [];
+  for (let k = 0; k < 6; k++) tots.push(actTime(b, k * n));
+  return { b, n, tots };
+}
+function viewStrip() {
+  const { n, tots, b } = stripData(), d = disAttr();
+  const top = tots[5];
+  const strips = [1, 2, 3, 4, 5, 6].map(s => {
+    const k = 6 - s, a = 0.06 + 0.34 * (tots[k] - tots[0]) / Math.max(top - tots[0], 0.001);
+    return '<button class="btn strip' + (U.selStrip === s ? ' sel' : '') + '" style="background:rgba(255,0,0,' + a.toFixed(3) + ')" data-act="strip" data-a="' + s + '" aria-label="Strip ' + s + '">' +
+      '<span class="sn">' + s + '</span><span class="num sv">' + fmtStops(k * n) + '</span><span class="st">' + tots[k].toFixed(1) + ' s</span></button>';
+  }).join('');
+  let rows = '<div class="h">Step</div><div class="h">Cover from right</div><div class="h">Add time</div><div class="h">Reaches</div>';
+  for (let k = 0; k < 6; k++) rows += '<div>' + (k + 1) + '</div><div>' + (k ? k + '/6' : 'nothing') + '</div><div>' + ((tots[k] - (k ? tots[k - 1] : 0)).toFixed(1)) + ' s</div><div>' + tots[k].toFixed(1) + ' s</div>';
+  return '<div class="stripwrap"><div>' +
+    '<div class="lbl">Test strips, left to right. Strip 1 gets the most light.</div><div class="strips">' + strips + '</div>' +
+    '<div class="tbl">' + rows + '</div></div>' +
+    '<div class="rcol">' +
+    '<div class="mini">' + B('base', '\u2212', 'sq s', 'data-a="-1" aria-label="Decrease base time"') + '<button class="basev" data-act="keypad" aria-label="Enter base time"><span class="num">' + b.toFixed(1) + '</span><small>s</small></button>' + B('base', '+', 'sq s', 'data-a="1" aria-label="Increase base time"') + '</div>' +
+    '<div class="lbl" style="margin:0">Step size</div><div class="row" style="margin:0">' + ivChips() + '</div>' +
+    '<div class="row" style="margin:0;align-items:center;justify-content:space-between"><span class="lbl" style="margin:0">Step gap</span>' + stepper('gap') + '</div>' +
+    '<button class="btn go sm" data-act="start' + '" ' + d + '>Start strip test</button>' +
+    B('usestrip', 'Use selected strip', 'chip', U.selStrip ? '' : 'disabled') +
+    '</div></div>';
+}
+function stepper(key) {
+  return '<div class="stp">' + B('set', '\u2212', 'sq s', 'data-key="' + key + '" data-dir="-1" aria-label="Decrease"') + '<span class="sv">' + SETDEF[key].fmt(A.set[key]) + '</span>' + B('set', '+', 'sq s', 'data-key="' + key + '" data-dir="1" aria-label="Increase"') + '</div>';
+}
+function viewRecipe() {
+  const m = mainNom(), main = mainAct(), d = disAttr();
+  let lamp = main;
+  const rows = A.recipe.map(e => {
+    const isB = e.type === 'burn';
+    const t = isB ? Rcp(m * Math.pow(2, e.n / 12)) - main : main - Rcp(m * Math.pow(2, -e.n / 12));
+    if (isB) lamp += t;
+    return '<div class="entry"><span class="badge ' + e.type + '">' + (isB ? 'Burn' : 'Dodge') + '</span><span class="num es">' + fmtStops(isB ? e.n : -e.n) + '</span><span class="et">' + (isB ? 'add ' : 'hold back ') + t.toFixed(1) + ' s</span>' +
+      B('rn', '\u2212', 'sq s', 'data-a="' + e.id + '" data-b="-1" aria-label="Less"') + B('rn', '+', 'sq s', 'data-a="' + e.id + '" data-b="1" aria-label="More"') + B('rdel', '\u2715', 'sq s', 'data-a="' + e.id + '" aria-label="Remove"') + '</div>';
+  }).join('');
+  const saved = A.saved.map(s => '<span style="display:flex;gap:6px">' + B('rload', esc(s.name), 'chip', 'data-a="' + s.id + '"') + B('rdelsaved', '\u2715', 'chip x', 'data-a="' + s.id + '" aria-label="Delete ' + esc(s.name) + '"') + '</span>').join('');
+  return '<div class="recwrap"><div>' +
+    '<div class="lbl">Main exposure ' + main.toFixed(1) + ' s (base ' + (A.baseT / 10).toFixed(1) + ' s, ' + fmtStops(A.off) + ' stops). Burns and dodges are relative to it.</div>' +
+    '<div class="list">' + (rows || '<div class="empty">No burns or dodges yet. Add one below. Each is timed relative to the main exposure.</div>') + '</div>' +
+    '<div class="row" style="margin:0">' + B('addburn', '+ Burn', 'chip') + B('adddodge', '+ Dodge', 'chip') + '</div></div>' +
+    '<div class="rcol"><div class="readout sm"><div><div class="lbl">Lamp time</div><div class="num">' + lamp.toFixed(1) + '<small>s</small></div></div><div><div class="lbl">Steps</div><div class="num">' + (1 + A.recipe.filter(e => e.type === 'burn').length) + '</div></div></div>' +
+    '<button class="btn go" data-act="start" ' + d + '>Start recipe</button>' +
+    '<div class="lbl" style="margin:0">Step size</div><div class="row" style="margin:0">' + ivChips() + '</div>' +
+    B('rsave', 'Save this recipe', 'chip') +
+    (saved ? '<div class="saved">' + saved + '</div>' : '') + '</div></div>';
+}
+function viewLog() {
+  const kn = { single: 'Exposure', strip: 'Strip test', recipe: 'Recipe' };
+  const rows = A.log.map(e => '<div class="lrow"><span>' + new Date(e.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</span><span>' + kn[e.kind] + '</span><span>' + esc(e.meta) + '. Lamp time ' + (e.total / 1000).toFixed(1) + ' s</span>' +
+    '<input data-in="lognote" data-id="' + e.id + '" value="' + esc(e.note) + '" placeholder="Add a note" aria-label="Note"></div>').join('');
+  return '<div class="logv"><div class="lhead"><span>Time</span><span>Type</span><span>What was exposed</span><span>Note</span></div>' +
+    '<div class="loglist">' + (rows || '<div class="empty">Nothing logged yet. Each completed exposure is saved here automatically.</div>') + '</div>' +
+    '<div class="row" style="margin:8px 0 0">' + B('logclear', 'Clear log', 'chip', 'style="flex:none;width:250px"' + (A.log.length ? '' : ' disabled')) + '</div></div>';
+}
+const SIZES = [['4x5', '4 \u00d7 5'], ['5x7', '5 \u00d7 7'], ['8x10', '8 \u00d7 10'], ['11x14', '11 \u00d7 14'], ['12x16', '12 \u00d7 16'], ['16x20', '16 \u00d7 20'], ['20x24', '20 \u00d7 24']];
+function scaleHTML() {
+  const s = A.scale;
+  if (!(s.aw > 0 && s.ah > 0 && s.bw > 0 && s.bh > 0)) return '<div class="empty" style="padding:0">Enter both print sizes to see the change in stops.</div>';
+  const stops = Math.log2((s.bw * s.bh) / (s.aw * s.ah)), tw = Math.round(stops * 12), nb = (A.baseT / 10) * Math.pow(2, stops);
+  return '<div class="lbl">Change in exposure</div><div class="num">' + (stops >= 0 ? '+' : '\u2212') + Math.abs(stops).toFixed(2) + '<small>stops</small></div>' +
+    '<div class="lbl" style="margin-top:8px">Nearest twelfth of a stop: ' + fmtStops(tw) + '. New base time ' + nb.toFixed(1) + ' s.</div>' +
+    '<div class="row" style="margin:10px 0 0">' + B('applyscale', 'Apply to base time', 'chip', 'style="height:70px"') + '</div>';
+}
+function viewScale() {
+  const s = A.scale;
+  const side = (k, name) => {
+    const cur = s[k + 'w'] + 'x' + s[k + 'h'];
+    return '<div class="szrow"><span class="cap">' + name + '</span><input type="number" min="1" step="any" value="' + s[k + 'w'] + '" data-in="scale" data-f="' + k + 'w" aria-label="' + name + ' width"><span>\u00d7</span><input type="number" min="1" step="any" value="' + s[k + 'h'] + '" data-in="scale" data-f="' + k + 'h" aria-label="' + name + ' height">' +
+      '<select data-in="scalePreset" data-side="' + k + '" aria-label="' + name + ' preset"><option value="">Common sizes (inches)</option>' + SIZES.map(z => '<option value="' + z[0] + '"' + (z[0] === cur ? ' selected' : '') + '>' + z[1] + '</option>').join('') + '</select></div>';
+  };
+  return '<div class="scv"><div><div class="lbl">Enter both sizes in the same unit. Exposure scales with print area.</div>' + side('a', 'Current print') + side('b', 'New print') + '</div>' +
+    '<div class="scres" id="scRes">' + scaleHTML() + '</div></div>';
+}
+function viewSet() {
+  const row = (label, hint, ctl) => '<div class="srow"><span>' + label + (hint ? '<small>' + hint + '</small>' : '') + '</span>' + ctl + '</div>';
+  const tog = (key, label, hint) => row(label, hint, B('toggle', A.set[key] ? 'On' : 'Off', 'tog' + (A.set[key] ? ' on' : ''), 'data-key="' + key + '"'));
+  return '<div class="setv"><div>' +
+    row('Strip test gap', 'Enlarger off while you move the card', stepper('gap')) +
+    row('Lamp latency offset', 'Added to every lamp switch-on', stepper('lat')) +
+    row('Focus light timeout', 'Enforced by the relay unit', stepper('focusMin')) +
+    row('Beep volume', 'Every second and at each step', stepper('vol')) +
+    tog('mute', 'Mute beeps', '') +
+    '</div><div>' +
+    row('Screen dim while exposing', '', stepper('dim')) +
+    tog('safeAuto', 'Safelight off while exposing', '') +
+    tog('recipOn', 'Reciprocity compensation', 'Placeholder power law for long exposures') +
+    row('Reciprocity starts above', '', stepper('recipThr')) +
+    row('Reciprocity exponent', 'Time multiplier grows with this power', stepper('recipK')) +
+    '</div></div>';
+}
+
+function genericPlan() {
+  return { kind: R.kind || 'single', steps: Array.from({ length: Math.max(R.steps, 1) }, (_, j) => ({ ms: 0, label: 'Step ' + (j + 1), stops: 0 })) };
+}
+function viewRun() {
+  const plan = U.runPlan || genericPlan();
+  const st = R.state === 'PAUSED' ? (R.pf || 'EXPOSING') : R.state;
+  const n = plan.steps.length;
+  const i = clamp(st === 'GAP' ? R.idx + 1 : R.idx, 0, n - 1);
+  const step = plan.steps[i];
+  const kn = { single: 'Exposure', strip: 'Strip test', recipe: 'Recipe' }[plan.kind] || 'Exposure';
+  const title = (n > 1 ? kn + ', step ' + (i + 1) + ' of ' + n : kn) + (R.state === 'PAUSED' ? ', paused' : '');
+  const d = disAttr();
+  let l1 = st === 'GAP' ? 'Enlarger off' : R.state === 'PAUSED' ? 'Enlarger off, paused' : 'Enlarger on', l2 = '';
+  if (st === 'GAP') l2 = plan.kind === 'strip' ? step.label : 'Get ready: ' + step.label;
+  else if (plan.kind === 'strip') l2 = i === 0 ? 'Whole sheet' : 'Strips 1 to ' + (6 - i);
+  else if (plan.kind === 'recipe') l2 = step.label;
+  const cap = st === 'GAP' ? 'until the next exposure' : 'remaining';
+  let vis = '';
+  if (plan.kind === 'strip') {
+    vis = '<div class="mstrips">' + [1, 2, 3, 4, 5, 6].map(s => '<div class="mstrip ' + (s > 6 - i ? 'cov' : 'lit') + '">' + s + '</div>').join('') + '</div>';
+  } else if (plan.kind === 'recipe') {
+    vis = '<div class="steps">' + plan.steps.map((s, j) => '<div class="stpl ' + (j < i ? 'done' : j === i ? 'cur' : '') + '"><span>' + esc(s.label) + '</span><span>' + (s.ms / 1000).toFixed(1) + ' s</span></div>').join('') + '</div>';
+    if (st === 'EXPOSING' && i === 0 && step.cues && step.cues.length)
+      vis += '<div class="cues">' + step.cues.map((c, j) => '<div class="cue" id="cue' + j + '" data-hold="' + c.holdMs + '"><span>' + esc(c.label) + '</span><span class="cs"></span></div>').join('') + '</div>';
+  }
+  return '<div class="run"><div class="rl">' +
+    '<div class="rtitle">' + esc(title) + '</div>' +
+    '<div class="cdbox"><div class="cd num" id="cd">0.0</div><div class="cdcap">' + cap + '</div></div>' +
+    '<div class="pr1">' + l1 + '</div><div class="pr2">' + esc(l2) + '</div>' +
+    '<div class="runbtns">' + (R.state === 'PAUSED' ? '<button class="btn go" data-act="resume" ' + d + '>Resume</button>' : '<button class="tog2" data-act="pause" ' + d + '>Pause</button>') + '<button class="tog2" data-act="cancel" ' + d + '>Cancel</button></div>' +
+    '</div><div class="rr">' +
+    '<div class="readout sm"><div><div class="lbl">Stops</div><div class="num">' + fmtStops(step.stops || 0) + '</div></div><div><div class="lbl">' + (plan.kind === 'single' ? 'Time' : 'This step') + '</div><div class="num">' + (step.ms ? (step.ms / 1000).toFixed(1) : sec1(R.total)) + '<small>s</small></div></div></div>' +
+    vis + '</div></div>';
+}
+const sec1 = ms => (ms / 1000).toFixed(1);
+
+function bannerHTML() {
+  const run = running(R.state);
+  if (!U.linkOk) {
+    const tap = sim.appMode === 'web' && sim.linkUp && !U.session;
+    let text, btn = '';
+    if (!sim.linkUp) text = run ? 'Relay not connected. It keeps timing. Use the foot pedal to pause or cancel.' : 'Relay not connected. Start, focus and safelight are off until the link returns.';
+    else if (tap) {
+      text = (U.everConnected ? 'Bluetooth connection lost.' : 'Not connected to the relay.') + (run ? ' The relay keeps timing.' : '');
+      btn = '<button class="bbtn" data-act="reconnect">' + (U.everConnected ? 'Reconnect' : 'Connect') + '</button>';
+    } else text = 'Connecting to the relay...';
+    return '<div class="banner">' + text + btn + '</div>';
+  }
+  return R.state === 'FAULT' ? '<div class="banner">' + esc(R.fault || 'Fault') + '.</div>' : '';
+}
+function renderMainView() {
+  let html;
+  const banner = bannerHTML();
+  if (running(R.state)) html = viewRun();
+  else html = { time: viewTime, strip: viewStrip, recipe: viewRecipe, log: viewLog, scale: viewScale, set: viewSet }[A.tab]();
+  $('#main').innerHTML = banner + html;
+}
+function renderOverlay() {
+  const o = $('#overlay');
+  if (U.chooser) {
+    o.innerHTML = '<div class="scrim"><div class="chooser"><h3>Pair with a device</h3><p>This page wants to connect to a Bluetooth device.</p>' +
+      (sim.linkUp ? '<div class="dev"><span>F-stop relay (ESP32-S3)</span><button data-act="pair">Pair</button></div>' : '<div class="dev"><span>No compatible devices in range.</span></div>') +
+      '<div class="foot"><button class="plain" data-act="pairCancel">Cancel</button></div><small>Simulated browser dialog. A web page cannot recolour it, so pair with the room lights on.</small></div></div>';
+    return;
+  }
+  if (!U.keypad) { o.innerHTML = ''; return; }
+  const keys = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '.', '0', 'back'];
+  o.innerHTML = '<div class="scrim"><div class="kp"><div class="lbl">Base time in seconds</div><div class="kpd num">' + esc(U.keypad.buf || '0') + '</div><div class="kpg">' +
+    keys.map(k => '<button data-act="kp" data-a="' + k + '">' + (k === 'back' ? '\u232b' : k) + '</button>').join('') +
+    '<button data-act="kp" data-a="cancel">Cancel</button><button class="ok" data-act="kp" data-a="ok" style="grid-column:span 2">Set</button></div></div></div>';
+}
+function focusKey() {
+  const f = document.activeElement;
+  return f && f.dataset && f.dataset.act && screen.contains(f) ? [f.dataset.act, f.dataset.a || '', f.dataset.b || '', f.dataset.key || '', f.dataset.dir || ''] : null;
+}
+function restoreFocus(k) {
+  if (!k) return;
+  const sel = '[data-act="' + k[0] + '"]' + (k[1] ? '[data-a="' + k[1] + '"]' : '') + (k[2] ? '[data-b="' + k[2] + '"]' : '') + (k[3] ? '[data-key="' + k[3] + '"]' : '') + (k[4] ? '[data-dir="' + k[4] + '"]' : '');
+  const el = $(sel, screen);
+  if (el) el.focus({ preventScroll: true });
+}
+function renderAll() {
+  const fk = focusKey();
+  renderSeg(); renderStatus(); renderNav(); renderMainView(); renderOverlay(); applyBright(); renderKnobStatic();
+  restoreFocus(fk);
+}
+function changed() { save(); syncArm(); renderAll(); }
+
+/* ================= input handling on the main screen ================= */
+screen.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  act(el.dataset.act, el.dataset);
+});
+screen.addEventListener('input', e => {
+  const t = e.target, k = t.dataset.in; if (!k) return;
+  if (k === 'bright') { A.set.bright = +t.value; applyBright(); save(); }
+  else if (k === 'lognote') { const en = A.log.find(x => String(x.id) === t.dataset.id); if (en) { en.note = t.value; save(); } }
+  else if (k === 'scale') { A.scale[t.dataset.f] = parseFloat(t.value) || 0; save(); const r = $('#scRes'); if (r) r.innerHTML = scaleHTML(); }
+});
+screen.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.in === 'scalePreset' && t.value) {
+    const [w, h] = t.value.split('x').map(Number), s = t.dataset.side;
+    A.scale[s + 'w'] = w; A.scale[s + 'h'] = h; save(); renderMainView();
+  }
+});
+
+function act(name, d) {
+  const a = d.a, b = d.b;
+  switch (name) {
+    case 'reconnect': U.chooser = true; renderOverlay(); break;
+    case 'pairCancel': U.chooser = false; renderOverlay(); break;
+    case 'pair':
+      U.chooser = false; renderOverlay(); toast('Pairing...');
+      setTimeout(() => { if (sim.linkUp) { U.session = true; mlog('UI', 'paired through the browser dialog and connected'); } else toast('Relay not found', 3000, true); renderAll(); }, 700);
+      break;
+    case 'tab': A.tab = a; U.keypad = null; changed(); break;
+    case 'base': A.baseT = clamp(A.baseT + (+a) * 5, 5, 9999); changed(); break;
+    case 'preset': A.baseT = +a * 10; changed(); break;
+    case 'keypad': U.keypad = { buf: '' }; renderOverlay(); break;
+    case 'kp': keypad(a); break;
+    case 'iv': A.iv = +a; changed(); break;
+    case 'off': A.off = clamp(A.off + (+a) * ivN(), -60, 60); changed(); break;
+    case 'off0': A.off = 0; changed(); break;
+    case 'setbase': A.baseT = clamp(Math.round(mainNom() * 10), 5, 9999); A.off = 0; toast('Base time set to ' + (A.baseT / 10).toFixed(1) + ' s'); changed(); break;
+    case 'start': doStart(); break;
+    case 'pause': toRelay('PAUSE'); break;
+    case 'resume': toRelay('RESUME'); break;
+    case 'cancel': toRelay('CANCEL'); break;
+    case 'focus': toRelay('FOCUS', { on: R.state !== 'FOCUS' }); break;
+    case 'safe': toRelay('SAFELIGHT', { on: !R.safeUser }); break;
+    case 'strip': U.selStrip = U.selStrip === +a ? null : +a; renderMainView(); break;
+    case 'usestrip': if (U.selStrip) { A.off = (6 - U.selStrip) * ivN(); A.tab = 'time'; toast('Exposure set to ' + fmtStops(A.off) + ' stops from strip ' + U.selStrip); changed(); } break;
+    case 'addburn': case 'adddodge': A.recipe.push({ id: ++A.rid, type: name === 'addburn' ? 'burn' : 'dodge', n: ivN() }); if (A.recipe.length > 8) A.recipe.shift(); changed(); break;
+    case 'rn': { const e = A.recipe.find(x => String(x.id) === a); if (e) { e.n = clamp(e.n + (+b) * ivN(), 1, 48); changed(); } break; }
+    case 'rdel': A.recipe = A.recipe.filter(x => String(x.id) !== a); changed(); break;
+    case 'rsave': A.saved.push({ id: ++A.rid, name: 'Recipe ' + (A.saved.length + 1), baseT: A.baseT, off: A.off, iv: A.iv, recipe: JSON.parse(JSON.stringify(A.recipe)) }); if (A.saved.length > 6) A.saved.shift(); toast('Recipe saved'); changed(); break;
+    case 'rload': { const s = A.saved.find(x => String(x.id) === a); if (s) { A.baseT = s.baseT; A.off = s.off; A.iv = s.iv; A.recipe = JSON.parse(JSON.stringify(s.recipe)); A.recipe.forEach(x => { x.id = ++A.rid; }); toast('Loaded ' + s.name); changed(); } break; }
+    case 'rdelsaved': A.saved = A.saved.filter(x => String(x.id) !== a); changed(); break;
+    case 'logclear': A.log = []; changed(); break;
+    case 'applyscale': { const s = A.scale; const st = Math.log2((s.bw * s.bh) / (s.aw * s.ah)); A.baseT = clamp(Math.round((A.baseT / 10) * Math.pow(2, st) * 10), 5, 9999); A.scale.aw = s.bw; A.scale.ah = s.bh; toast('Base time is now ' + (A.baseT / 10).toFixed(1) + ' s'); changed(); break; }
+    case 'set': {
+      const k = d.key, dir = +d.dir, def = SETDEF[k]; let v = A.set[k];
+      if (def.opts) v = def.opts[clamp(def.opts.indexOf(v) + dir, 0, def.opts.length - 1)];
+      else v = clamp(Math.round((v + dir * def.step) * 100) / 100, def.min, def.max);
+      A.set[k] = v; pushConfig(); changed(); break;
+    }
+    case 'toggle': A.set[d.key] = !A.set[d.key]; pushConfig(); changed(); break;
+  }
+}
+function keypad(k) {
+  const p = U.keypad; if (!p) return;
+  if (k === 'cancel') U.keypad = null;
+  else if (k === 'back') p.buf = p.buf.slice(0, -1);
+  else if (k === 'ok') {
+    const v = parseFloat(p.buf);
+    if (v >= 0.5 && v <= 999.9) { A.baseT = Math.round(v * 10); U.keypad = null; changed(); return; }
+    toast('Enter a time from 0.5 to 999.9 s', 3000, true);
+  }
+  else if (k === '.') { if (!p.buf.includes('.')) p.buf += p.buf ? '.' : '0.'; }
+  else if (/^\d$/.test(k)) { if (p.buf.replace('.', '').length < 5 && !/\.\d$/.test(p.buf)) p.buf += k; }
+  renderOverlay();
+}
+function doStart() {
+  if (!U.linkOk) return;
+  syncArm(true); toRelay('START');
+}
+
+/* ================= round knob display (stage 2) ================= */
+const KMODES = ['Stops', 'Base time', 'Step size'];
+function knobRotate(dir) {
+  if (!sim.knobOn) return;
+  U.knobAngle += dir * 15;
+  $('#kNotch').style.transform = 'rotate(' + U.knobAngle + 'deg)';
+  mlog('Knob\u2192UI', 'rotate ' + (dir > 0 ? 'right' : 'left'));
+  if (running(R.state)) { toast('Knob ignored while an exposure runs'); return; }
+  if (U.knobMode === 0) A.off = clamp(A.off + dir * ivN(), -60, 60);
+  else if (U.knobMode === 1) A.baseT = clamp(A.baseT + dir * 5, 5, 9999);
+  else A.iv = clamp(A.iv + dir, 0, IV.length - 1);
+  changed();
+}
+function knobPress() {
+  if (!sim.knobOn) return;
+  U.knobMode = (U.knobMode + 1) % 3;
+  mlog('Knob\u2192UI', 'press: now changes ' + KMODES[U.knobMode].toLowerCase());
+  renderKnobStatic();
+}
+function knobGo() {
+  if (!sim.knobOn || !U.linkOk) return;
+  mlog('Knob\u2192UI', 'touch: ' + (R.state === 'PAUSED' ? 'resume' : running(R.state) ? 'pause' : 'start'));
+  if (R.state === 'PAUSED') toRelay('RESUME');
+  else if (running(R.state)) toRelay('PAUSE');
+  else { syncArm(); toRelay('START'); }
+}
+function renderKnobStatic() {
+  const on = sim.knobOn;
+  $$('#kDots i').forEach((el, i) => el.classList.toggle('on', i === U.knobMode));
+  $('#kOver').hidden = on;
+  $('#kGo').disabled = !on || !U.linkOk;
+  $('#kGo').textContent = R.state === 'PAUSED' ? 'Resume' : running(R.state) ? 'Pause' : 'Start';
+}
+function renderKnobLive() {
+  if (U.view !== 'knob' && !$('#mirState')) return;
+  const run = running(R.state), act = mainAct();
+  const st = R.state === 'PAUSED' ? (R.pf || 'EXPOSING') : R.state;
+  const plan = U.runPlan || genericPlan();
+  const i = clamp(st === 'GAP' ? R.idx + 1 : R.idx, 0, Math.max(plan.steps.length - 1, 0));
+  let mode, val, sub, prog = 0;
+  if (run) {
+    const r = remEst();
+    mode = R.state === 'PAUSED' ? 'Paused' : st === 'GAP' ? 'Next exposure in' : (plan.steps.length > 1 ? 'Step ' + (i + 1) + ' of ' + plan.steps.length : 'Exposing');
+    val = (r / 1000).toFixed(1);
+    sub = st === 'GAP' && plan.steps[i] ? plan.steps[i].label : 'seconds left';
+    prog = R.total ? 1 - r / R.total : 0;
+  } else if (U.knobMode === 0) { mode = 'Stops'; val = fmtStops(A.off); sub = act.toFixed(1) + ' s'; }
+  else if (U.knobMode === 1) { mode = 'Base time'; val = (A.baseT / 10).toFixed(1); sub = 'seconds'; }
+  else { mode = 'Step size'; val = IV[A.iv].l; sub = 'stop per click'; }
+  $('#kMode').textContent = mode; $('#kVal').textContent = val; $('#kSub').textContent = sub;
+  $('#kDots').style.visibility = run ? 'hidden' : 'visible';
+  $('#kVal').style.fontSize = val.length > 5 ? '96px' : '128px';
+  $('#kPrg').setAttribute('stroke-dashoffset', (1344.6 * (1 - clamp(prog, 0, 1))).toFixed(1));
+  // mirror card
+  $('#mirState').textContent = U.linkOk ? NAMES[R.state] : 'No link';
+  $('#mirStops').textContent = fmtStops(A.off); $('#mirTime').textContent = act.toFixed(1) + ' s';
+  $('#mirMsg').textContent = 'Base ' + (A.baseT / 10).toFixed(1) + ' s, step size ' + IV[A.iv].l + ' stop';
+}
+
+/* ================= live updates every frame ================= */
+function renderLive() {
+  const now = perf();
+  const cd = $('#cd');
+  if (cd) { cd.textContent = (U.linkOk ? '' : '~') + (remEst() / 1000).toFixed(1); cd.classList.toggle('stale', !U.linkOk); }
+  // segment bar
+  const segs = $$('#segbar .seg');
+  if (segs.length) {
+    const st = R.state === 'PAUSED' ? R.pf : R.state, r = remEst();
+    segs.forEach((sg, i) => {
+      let f = 0, nx = false;
+      if (running(R.state)) {
+        if (st === 'EXPOSING') { if (i < R.idx) f = 100; else if (i === R.idx) f = R.total ? (1 - r / R.total) * 100 : 0; }
+        else if (st === 'GAP') { if (i <= R.idx) f = 100; if (i === R.idx + 1) nx = true; }
+      }
+      sg.firstChild.style.width = clamp(f, 0, 100) + '%'; sg.classList.toggle('next', nx);
+    });
+  }
+  // dodge cues
+  $$('.cue').forEach(c => {
+    const hold = +c.dataset.hold, el = R.total - remEst(), cs = c.querySelector('.cs');
+    const holding = R.state === 'EXPOSING' && el < hold;
+    c.classList.toggle('hold', holding);
+    cs.textContent = holding ? 'Hold, ' + ((hold - el) / 1000).toFixed(1) + ' s left' : 'Release';
+  });
+  const fr = $('#focusrem');
+  if (fr) fr.textContent = R.state === 'FOCUS' && R.focusRem != null ? 'Off in ' + Math.floor(R.focusRem / 60000) + ':' + String(Math.floor(R.focusRem / 1000) % 60).padStart(2, '0') : '';
+  if (U.toast && now > U.toast.until) { U.toast = null; }
+  updateToast();
+  // relay panel
+  $('#lampEnl').classList.toggle('on', Relay.lamp);
+  $('#lampSafe').classList.toggle('on', Relay.safe);
+  $('#buzz').classList.toggle('on', now - Relay.buzzAt < 140);
+  $('#rState').textContent = NAMES[Relay.state];
+  $('#rPlan').textContent = Relay.plan ? Relay.plan.kind + ', ' + Relay.plan.steps.length + ' step(s)' : 'none';
+  $('#rStep').textContent = running(Relay.state) ? (Relay.state === 'GAP' ? 'gap after ' + (Relay.idx + 1) : (Relay.idx + 1)) + ' of ' + Relay.plan.steps.length : 'none';
+  $('#rRem').textContent = running(Relay.state) ? (Math.max(Relay.rem, 0) / 1000).toFixed(2) + ' s' : 'none';
+  $('#rLat').textContent = Relay.cfg.lat + ' ms';
+  $('#rFocus').textContent = Relay.state === 'FOCUS' && Relay.cfg.focusMs ? Math.max(0, Math.round((Relay.cfg.focusMs - Relay.focusEl) / 1000)) + ' s left' : (Relay.cfg.focusMs ? Relay.cfg.focusMs / 60000 + ' min' : 'off');
+  $('#rHb').textContent = !Relay.heard ? 'waiting' : Relay.hbOk ? 'ok' : 'lost';
+  renderKnobLive();
+}
+
+/* ================= layout: scale the fixed-size screens to fit ================= */
+function fit() {
+  const box = $('#stagebox');
+  if (box.clientWidth) {
+    const s = Math.min(1, box.clientWidth / 1280);
+    screen.style.transform = 'scale(' + s + ')'; box.style.height = (800 * s) + 'px';
+  }
+  const kf = $('#knobFit');
+  if (kf.clientWidth) {
+    const s = Math.min(1, kf.clientWidth / 560);
+    $('#knobOuter').style.transform = 'scale(' + s + ')'; kf.style.height = (560 * s) + 'px';
+  }
+}
+window.addEventListener('resize', fit);
+function setView(v) {
+  U.view = v;
+  $('#view-main').hidden = v !== 'main'; $('#view-knob').hidden = v !== 'knob';
+  $('#tabMain').setAttribute('aria-selected', v === 'main'); $('#tabKnob').setAttribute('aria-selected', v === 'knob');
+  fit();
+}
+$('#tabMain').addEventListener('click', () => setView('main'));
+$('#tabKnob').addEventListener('click', () => setView('knob'));
+
+/* ================= knob controls ================= */
+$('#kL').addEventListener('click', () => knobRotate(-1));
+$('#kR').addEventListener('click', () => knobRotate(1));
+$('#kP').addEventListener('click', knobPress);
+$('#kGo').addEventListener('click', knobGo);
+(() => {
+  const ring = $('#kRing'); let drag = null;
+  ring.addEventListener('pointerdown', e => {
+    ring.setPointerCapture(e.pointerId);
+    const r = ring.getBoundingClientRect();
+    drag = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, a: Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)), acc: 0 };
+  });
+  ring.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const a = Math.atan2(e.clientY - drag.cy, e.clientX - drag.cx);
+    let d = a - drag.a; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI;
+    drag.a = a; drag.acc += d * 180 / Math.PI;
+    while (drag.acc >= 15) { drag.acc -= 15; knobRotate(1); }
+    while (drag.acc <= -15) { drag.acc += 15; knobRotate(-1); }
+  });
+  const end = () => { drag = null; };
+  ring.addEventListener('pointerup', end); ring.addEventListener('pointercancel', end);
+  let wacc = 0;
+  $('#knobOuter').addEventListener('wheel', e => {
+    e.preventDefault(); wacc += e.deltaY;
+    while (wacc <= -60) { wacc += 60; knobRotate(1); }
+    while (wacc >= 60) { wacc -= 60; knobRotate(-1); }
+  }, { passive: false });
+})();
+document.addEventListener('keydown', e => {
+  if (U.view !== 'knob') return;
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); knobRotate(1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); knobRotate(-1); }
+});
+
+/* ================= simulation controls ================= */
+function autoConnect() {
+  setTimeout(() => {
+    if (sim.appMode === 'wrapped' && sim.linkUp && !U.session) { U.session = true; mlog('UI', 'app connected to the relay by itself'); renderAll(); }
+  }, 1400);
+}
+$('#swLink').addEventListener('change', e => {
+  sim.linkUp = e.target.checked;
+  if (!sim.linkUp) { U.session = false; U.chooser = false; mlog('Link', 'Bluetooth link cut'); }
+  else { mlog('Link', 'Bluetooth link restored'); autoConnect(); }
+  renderAll();
+});
+const MODE_HINT = {
+  web: 'Web app: you tap to connect and to reconnect, the browser\u2019s pairing list is a bright system dialog, and the page can only darken its own pixels, not the tablet\u2019s backlight.',
+  wrapped: 'Wrapped app: reconnects by itself and can set the real screen brightness.'
+};
+function setMode(m) {
+  sim.appMode = m;
+  $$('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === m));
+  $('#modeHint').textContent = MODE_HINT[m];
+  mlog('Tablet', m === 'web' ? 'app type: web app (Web Bluetooth)' : 'app type: wrapped app (native Bluetooth)');
+  if (m === 'wrapped') autoConnect();
+  renderAll();
+}
+$$('#modeSeg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$('#modeHint').textContent = MODE_HINT.web;
+
+/* tablet setup checklist */
+const CHECKS = [
+  { k: 'filter', sim: true, t: 'Red safelight film over the screen', n: 'Off: the LCD backlight shows as a grey glow behind the interface.' },
+  { k: 'fullscreen', sim: true, t: 'Fullscreen or screen pinned', n: 'Off: Android\u2019s bright status and navigation bars appear.' },
+  { k: 'dnd', sim: true, t: 'Do Not Disturb on', n: 'Off: notifications pop up as a bright card.', btn: true },
+  { k: 'lights', t: 'Paired with the relay with the room lights on', n: 'A web app\u2019s pairing list is a system dialog and cannot be made red.' },
+  { k: 'rotate', t: 'Auto-rotate off', n: 'Keeps the layout in landscape.' },
+  { k: 'awake', t: 'On its charger with the screen kept awake', n: 'A web app can request a wake lock; Developer options can keep it awake while charging.' },
+  { k: 'paper', t: 'Paper fog test passed with the film fitted', n: 'Cover half a sheet, leave it at working distance, then develop.' },
+  { k: 'case', t: 'In a case, on a stand, out of splash range', n: 'IP68 covers fresh water, not photographic chemistry.' }
+];
+const chk = c => (c.sim ? A.tablet[c.k] : A.tablet.checks[c.k]);
+function renderChecks() {
+  $('#checks').innerHTML = CHECKS.map(c => '<li><label><input type="checkbox" data-k="' + c.k + '"' + (c.sim ? ' data-sim="1"' : '') + (chk(c) ? ' checked' : '') + '><span>' + c.t + (c.sim ? '<span class="simtag">changes the screen above</span>' : '') + '<small>' + c.n + '</small></span></label>' +
+    (c.btn ? '<div style="margin:6px 0 0 30px"><button class="small-btn" id="btnNotif">Send a test notification</button> <span class="hint" id="notifRes"></span></div>' : '') + '</li>').join('');
+  updateProg();
+}
+function updateProg() {
+  const n = CHECKS.filter(chk).length, el = $('#cprog');
+  el.textContent = n === CHECKS.length ? 'Ready for the darkroom.' : n + ' of ' + CHECKS.length + ' done';
+  el.classList.toggle('ready', n === CHECKS.length);
+}
+$('#checks').addEventListener('change', e => {
+  const t = e.target; if (!t.dataset.k) return;
+  if (t.dataset.sim) A.tablet[t.dataset.k] = t.checked; else A.tablet.checks[t.dataset.k] = t.checked;
+  save(); applyBright(); updateProg();
+  if (t.dataset.sim) mlog('Tablet', t.dataset.k + (t.checked ? ' on' : ' off'));
+});
+$('#checks').addEventListener('click', e => { if (e.target.id === 'btnNotif') sendNotif(); });
+function sendNotif() {
+  const res = $('#notifRes'), n = $('#notif');
+  if (A.tablet.dnd) { mlog('Tablet', 'notification held back by Do Not Disturb'); res.textContent = 'Held back by Do Not Disturb.'; return; }
+  mlog('Tablet', 'notification popped up over the app'); res.textContent = 'A bright card appeared over the screen.';
+  n.classList.add('show'); clearTimeout(sendNotif.t); sendNotif.t = setTimeout(() => n.classList.remove('show'), 4500);
+}
+function tickClock() { $('#sysTime').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+setInterval(tickClock, 15000); tickClock();
+renderChecks();
+$('#swKnob').addEventListener('change', e => {
+  sim.knobOn = e.target.checked;
+  mlog('Link', 'round knob display ' + (sim.knobOn ? 'connected' : 'disconnected'));
+  renderAll();
+});
+$$('#speedSeg button').forEach(b => b.addEventListener('click', () => {
+  sim.speed = +b.dataset.speed;
+  $$('#speedSeg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+}));
+$('#btnReset').addEventListener('click', () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } location.reload(); });
+(() => {
+  const btn = $('#pedal'), bar = $('#pedalBar'); let t0 = 0, raf = 0;
+  const upd = () => { const p = clamp((perf() - t0) / 1000, 0, 1); bar.style.width = (p * 100) + '%'; if (t0) raf = requestAnimationFrame(upd); };
+  btn.addEventListener('pointerdown', e => { btn.setPointerCapture(e.pointerId); t0 = perf(); btn.classList.add('down'); upd(); });
+  const up = () => {
+    if (!t0) return;
+    const long = perf() - t0 >= 1000; t0 = 0; cancelAnimationFrame(raf); bar.style.width = '0'; btn.classList.remove('down');
+    Relay.pedal(long);
+  };
+  btn.addEventListener('pointerup', up);
+  btn.addEventListener('pointercancel', () => { t0 = 0; cancelAnimationFrame(raf); bar.style.width = '0'; btn.classList.remove('down'); });
+  btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!e.repeat) Relay.pedal(false); } });
+})();
+
+/* ================= timers and boot ================= */
+setInterval(() => Relay.tick(), 20);
+setInterval(() => Relay.sendStatus(), 100);
+setInterval(() => toRelay('PING'), 500);
+setInterval(() => {
+  if (U.linkOk && perf() - U.rxAt > 1000) { U.linkOk = false; mlog('UI', 'no status from relay: link lost'); renderAll(); }
+}, 250);
+(function frame() { renderLive(); requestAnimationFrame(frame); })();
+
+mlog('UI', 'tablet app started; last settings restored');
+renderAll(); fit(); setView('main');
+})();
+</script>
+</body>
+</html>
